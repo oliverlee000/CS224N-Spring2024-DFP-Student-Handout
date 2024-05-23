@@ -30,10 +30,7 @@ class AdamW(Optimizer):
         loss = None
         if closure is not None:
             loss = closure()
-        m, v, p = 0, 0, 0
-        t = 0
         for group in self.param_groups:
-            t += 1
             for p in group["params"]:
                 if p.grad is None:
                     continue
@@ -43,7 +40,7 @@ class AdamW(Optimizer):
 
                 # State should be stored in this dictionary.
                 state = self.state[p]
-
+    
                 # Access hyperparameters from the `group` dictionary.
                 alpha = group["lr"]
 
@@ -60,14 +57,26 @@ class AdamW(Optimizer):
                 # 3. Update parameters (p.data).
                 # 4. Apply weight decay after the main gradient-based updates.
                 # Refer to the default project handout for more details.
+
+                # Fetch hyperparams
                 beta1, beta2 = group["betas"]
                 eps = group["eps"]
                 lam = group["weight_decay"]
-                new_m = beta1 * m + (1 - beta1) * grad #First moment
-                new_v = beta2 * v + (1 - beta2) * grad^2 # Second moment
-                alpha = alpha * math.sqrt(1 - math.pow(beta2, t)) / (1 -  math.pow(beta1, t)) #Bias correction
-                p.data = p.data - alpha * new_m / (math.sqrt(new_v) + eps) # Step 3
+                
+                # Initialize first and second moment if not initialized
+                if len(state) == 0:
+                    state["m"], state["v"] = torch.zeros_like(p), torch.zeros_like(p)
+                    state["t"] = 0
+
+                m, v, t = state["m"], state["v"], state["t"]
+                t += 1
+                # Load first and second moment
+                m = beta1 * m + (1 - beta1) * grad #First moment
+                v = beta2 * v + (1 - beta2) * torch.square(grad) # Second moment
+                alpha_t = alpha * math.sqrt(1 - math.pow(beta2, t)) / (1 -  math.pow(beta1, t)) #Bias correction
+                p.data = p.data - alpha_t * m / (torch.sqrt(v) + eps) # Step 3
                 p.data = p.data - alpha * lam * p # weight decay
-                self.state[p] = state
-            m, v, = new_m, new_v
+
+                # Write into state
+                state["m"], state["v"], state["t"] = m, v, t
         return loss

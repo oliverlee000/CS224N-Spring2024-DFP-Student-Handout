@@ -50,12 +50,12 @@ class BertSelfAttention(nn.Module):
     # - Before returning, concatenate multi-heads to recover the original shape:
     #   [bs, seq_len, num_attention_heads * attention_head_size = hidden_size].
 
+    # TODO
     # Borrowed from Assignment 4 - attention.py
     B, nh, T, hs = query.size()
     attn_weights = (query @ key.transpose(-2, -1)) * (1.0 / math.sqrt(key.size(-1))) # size (B, nh, T, T)
-    attn_weights = attn_weights.masked_fill(self.mask[:,:,:T,:T] == 0, -1e10)
     # Adding attention_mask
-    attn_weights = attn_weights * attention_mask
+    attn_weights = attn_weights + attention_mask
     attn_weights = F.softmax(attn_weights, dim=-1)
     attn_output = attn_weights @ value # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
     attn_output = attn_output.transpose(1, 2).contiguous().view(B, T, nh * hs) # re-assemble all head outputs side by side
@@ -107,6 +107,7 @@ class BertLayer(nn.Module):
     """
     # Hint: Remember that BERT applies dropout to the transformed output of each sub-layer,
     # before it is added to the sub-layer input and normalized with a layer norm.
+    # TODO
     output = dense_layer(output)
     output = dropout(output)
     output = ln_layer(output + input)
@@ -123,10 +124,11 @@ class BertLayer(nn.Module):
     3. A feed forward layer.
     4. An add-norm operation that takes the input and output of the feed forward layer.
     """
+    # TODO
     attn_output = self.self_attention(hidden_states, attention_mask)
     add_norm_output = self.add_norm(hidden_states, attn_output, self.attention_dense, self.attention_dropout, self.attention_layer_norm)
     feed_forward_output = self.interm_af(self.interm_dense(add_norm_output))
-    add_norm_output = self.add_norm(hidden_states, attn_output, self.out_dense, self.out_dropout, self.out_layer_norm)
+    add_norm_output = self.add_norm(add_norm_output, feed_forward_output, self.out_dense, self.out_dropout, self.out_layer_norm)
     return add_norm_output
 
 
@@ -166,7 +168,7 @@ class BertModel(BertPreTrainedModel):
   def embed(self, input_ids):
     input_shape = input_ids.size()
     seq_length = input_shape[1]
-
+    # TODO
     # Get word embedding from self.word_embedding into input_embeds.
     inputs_embeds = self.word_embedding(input_ids)
 

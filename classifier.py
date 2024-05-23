@@ -60,11 +60,11 @@ class BertSentimentClassifier(torch.nn.Module):
         # HINT: You should consider what is an appropriate return value given that
         # the training loop currently uses F.cross_entropy as the loss function.
 
-        # should return softmax output
         # Get pooled output of sentences
+        # TODO
         output = self.bert(input_ids, attention_mask)
-        last_hidden_state = output['last_hidden_state']
-        output = self.dense(self.dropout(last_hidden_state))
+        pooled_output = output['pooler_output']
+        output = self.dense(self.dropout(pooled_output))
         return output
 
 
