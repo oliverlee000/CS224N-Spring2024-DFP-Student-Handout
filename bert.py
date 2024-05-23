@@ -51,7 +51,6 @@ class BertSelfAttention(nn.Module):
     #   [bs, seq_len, num_attention_heads * attention_head_size = hidden_size].
 
     # TODO
-    # Borrowed from Assignment 4 - attention.py
     B, nh, T, hs = query.size()
     attn_weights = (query @ key.transpose(-2, -1)) * (1.0 / math.sqrt(key.size(-1))) # size (B, nh, T, T)
     # Adding attention_mask

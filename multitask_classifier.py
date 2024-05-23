@@ -24,6 +24,8 @@ from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
 
+from classifier import BertSentimentClassifier
+
 from datasets import (
     SentenceClassificationDataset,
     SentenceClassificationTestDataset,
@@ -63,7 +65,7 @@ class MultitaskBERT(nn.Module):
     '''
     def __init__(self, config):
         super(MultitaskBERT, self).__init__()
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        self.bert = BertModel.from_pretrained('bert-base-uncased', config = config)
         # last-linear-layer mode does not require updating BERT paramters.
         assert config.fine_tune_mode in ["last-linear-layer", "full-model"]
         for param in self.bert.parameters():
@@ -72,7 +74,8 @@ class MultitaskBERT(nn.Module):
             elif config.fine_tune_mode == 'full-model':
                 param.requires_grad = True
         # You will want to add layers here to perform the downstream tasks.
-        ### TODO
+        self.sentiment_dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.sentiment_dense = nn.Linear(config.hidden_size, config.num_labels)
         raise NotImplementedError
 
 
@@ -92,7 +95,9 @@ class MultitaskBERT(nn.Module):
         (0 - negative, 1- somewhat negative, 2- neutral, 3- somewhat positive, 4- positive)
         Thus, your output should contain 5 logits for each sentence.
         '''
-        ### TODO
+        output = self.bert(input_ids, attention_mask)
+        pooled_output = output['pooler_output']
+        output = self.sentiment_dense(self.sentiment_dropout(pooled_output))
         raise NotImplementedError
 
 
