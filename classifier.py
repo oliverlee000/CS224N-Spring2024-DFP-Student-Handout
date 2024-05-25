@@ -63,6 +63,8 @@ class BertSentimentClassifier(torch.nn.Module):
         # Get pooled output of sentences
         # TODO
         output = self.bert(input_ids, attention_mask)
+
+        output = self.bert(input_ids, attention_mask)
         pooled_output = output['pooler_output']
         output = self.dense(self.dropout(pooled_output))
         return output
