@@ -264,6 +264,7 @@ def train_multitask(args):
 
                 optimizer.zero_grad()
                 logits = model.predict_sentiment(sst_ids, sst_mask)
+
                 sst_loss = function_sst_loss(logits, sst_labels.view(-1)) / args.batch_size
                 sst_loss.backward()
                 optimizer.step()
@@ -309,28 +310,6 @@ def train_multitask(args):
         #print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
 
 
-        '''
-        sst_train_acc, train_f1, *_ = model_eval_sst(sst_train_dataloader, model, device)
-        sst_dev_acc, dev_f1, *_ = model_eval_sst(sst_dev_dataloader, model, device)
-
-        sts_train_acc, train_f1, *_ = model_eval_multitask(sts_train_dataloader, model, device)
-        sts_dev_acc, dev_f1, *_ = model_eval_sst(sts_dev_dataloader, model, device)
-
-        para_train_acc, train_f1, *_ = model_eval_sst(para_train_dataloader, model, device)
-        para_dev_acc, dev_f1, *_ = model_eval_sst(para_dev_dataloader, model, device)
-
-        average_dev_acc = (sst_dev_acc + sts_dev_acc + para_dev_acc) / 3
-        if average_dev_acc > best_dev_acc:
-            best_dev_acc = average_dev_acc
-            save_model(model, optimizer, args, config, args.filepath)
-        average_train_acc = (sst_train_acc + sts_train_acc + para_train_acc) / 3
-        '''
-        '''
-        if dev_acc > best_dev_acc:
-            best_dev_acc = dev_acc
-            save_model(model, optimizer, args, config, args.filepath)
-        '''
-        print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {average_train_acc :.3f}, dev acc :: {average_dev_acc :.3f}")
 
 
 def test_multitask(args):
