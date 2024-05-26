@@ -248,7 +248,6 @@ def train_multitask(args):
                 
                 optimizer.zero_grad()
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                sts_logits = torch.squeeze(sts_logits, 1)
                 sts_loss = function_sts_loss(sts_logits, sts_labels.view(-1)) / args.batch_size
                 sts_loss.backward()
                 optimizer.step()
