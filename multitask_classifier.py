@@ -75,7 +75,7 @@ class MultitaskBERT(nn.Module):
         # You will want to add layers here to perform the downstream tasks.
         # Layers for sentiment
         self.sentiment_dropout = nn.Dropout(DROPOUT_PROB)
-        self.sentiment_dense = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        self.sentiment_dense = nn.Linear(BERT_HIDDEN_SIZE, 1)
 
         # Layers for paraphrase
         self.paraphrase_dropout = nn.Dropout(DROPOUT_PROB)
@@ -248,6 +248,7 @@ def train_multitask(args):
                 
                 optimizer.zero_grad()
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                print(sts_logits.shape)
                 sts_loss = function_sts_loss(sts_logits, sts_labels.view(-1)) / args.batch_size
                 sts_loss.backward()
                 optimizer.step()
