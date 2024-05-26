@@ -302,11 +302,11 @@ def train_multitask(args):
         '''
 
         overall_train_acc, train_f1 = model_eval_multitask(sst_train_dataloader, para_train_dataloader, sts_dev_dataloader, model, device)
-        overall_dev_acc, dev_f1 = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-        if overall_dev_acc > best_dev_acc:
-            best_dev_acc = overall_dev_acc
-            save_model(model, optimizer, args, config, args.filepath)
-        print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
+        #overall_dev_acc, dev_f1 = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+        #if overall_dev_acc > best_dev_acc:
+        #    best_dev_acc = overall_dev_acc
+        #    save_model(model, optimizer, args, config, args.filepath)
+        #print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
 
 
         '''
