@@ -83,7 +83,7 @@ class MultitaskBERT(nn.Module):
 
         # Layers for similarity
         self.similarity_dropout = nn.Dropout(DROPOUT_PROB)
-        self.similarity_dense = nn.Linear(2*BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        self.similarity_dense = nn.Linear(2*BERT_HIDDEN_SIZE, 1)
 
     def forward(self, input_ids, attention_mask):
         'Takes a batch of sentences and produces embeddings for them.'
