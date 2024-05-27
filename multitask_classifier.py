@@ -216,68 +216,67 @@ def train_multitask(args):
         train_loss = 0
         num_batches = 0
 
-        with tqdm(total=len(para_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}") as pbar:
-            for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
-                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
-                                                                            sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
-                                                                            sts_batch['labels'])
-                sts_ids_1 = sts_ids_1.to(device)
-                sts_mask_1 = sts_mask_1.to(device)
-                sts_ids_2 = sts_ids_2.to(device)
-                sts_mask_2 = sts_mask_2.to(device)
-                sts_labels = sts_labels.to(device)
-                
-                optimizer.zero_grad()
-                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                #print(sts_logits.shape)
-                sts_loss = function_sts_loss(sts_logits, sts_labels.view(-1)) / args.batch_size
-                sts_loss.backward()
-                optimizer.step()
 
-                train_loss += sts_loss.item()
-                num_batches += 1
+        for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
+            sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
+                                                                        sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
+                                                                        sts_batch['labels'])
+            sts_ids_1 = sts_ids_1.to(device)
+            sts_mask_1 = sts_mask_1.to(device)
+            sts_ids_2 = sts_ids_2.to(device)
+            sts_mask_2 = sts_mask_2.to(device)
+            sts_labels = sts_labels.to(device)
+            
+            optimizer.zero_grad()
+            sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+            #print(sts_logits.shape)
+            sts_loss = function_sts_loss(sts_logits, sts_labels.view(-1)) / args.batch_size
+            sts_loss.backward()
+            optimizer.step()
 
-            for para_batch in tqdm(para_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
-                #for sst_batch, para_batch, sts_batch in tqdm(zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}"):
-                
-                para_ids_1, para_mask_1, para_ids_2, para_mask_2, para_labels = (para_batch['token_ids_1'], para_batch['attention_mask_1'],
-                                                                                para_batch['token_ids_2'], para_batch['attention_mask_2'],
-                                                                                para_batch['labels'])
-                para_ids_1 = para_ids_1.to(device)
-                para_mask_1 = para_mask_1.to(device)
-                para_ids_2 = para_ids_2.to(device)
-                para_mask_2 = para_mask_2.to(device)
-                para_labels = para_labels.to(device).float()
+            train_loss += sts_loss.item()
+            num_batches += 1
 
-                optimizer.zero_grad()
-                para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
-                para_logits = torch.squeeze(para_logits, 1)
-                para_loss = function_para_loss(para_logits, para_labels.view(-1)) / args.batch_size
-                para_loss.backward()
-                optimizer.step()
-                train_loss += para_loss.item()
-                num_batches += 1
+        for para_batch in tqdm(para_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
+            #for sst_batch, para_batch, sts_batch in tqdm(zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}"):
+            
+            para_ids_1, para_mask_1, para_ids_2, para_mask_2, para_labels = (para_batch['token_ids_1'], para_batch['attention_mask_1'],
+                                                                            para_batch['token_ids_2'], para_batch['attention_mask_2'],
+                                                                            para_batch['labels'])
+            para_ids_1 = para_ids_1.to(device)
+            para_mask_1 = para_mask_1.to(device)
+            para_ids_2 = para_ids_2.to(device)
+            para_mask_2 = para_mask_2.to(device)
+            para_labels = para_labels.to(device).float()
 
-            for sst_batch in tqdm(sst_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
-                sst_ids, sst_mask, sst_labels = (sst_batch['token_ids'],
-                                        sst_batch['attention_mask'], sst_batch['labels'])
+            optimizer.zero_grad()
+            para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
+            para_logits = torch.squeeze(para_logits, 1)
+            para_loss = function_para_loss(para_logits, para_labels.view(-1)) / args.batch_size
+            para_loss.backward()
+            optimizer.step()
+            train_loss += para_loss.item()
+            num_batches += 1
 
-                sst_ids = sst_ids.to(device)
-                sst_mask = sst_mask.to(device)
-                sst_labels = sst_labels.to(device)
+        for sst_batch in tqdm(sst_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
+            sst_ids, sst_mask, sst_labels = (sst_batch['token_ids'],
+                                    sst_batch['attention_mask'], sst_batch['labels'])
 
-                optimizer.zero_grad()
-                logits = model.predict_sentiment(sst_ids, sst_mask)
+            sst_ids = sst_ids.to(device)
+            sst_mask = sst_mask.to(device)
+            sst_labels = sst_labels.to(device)
 
-                sst_loss = function_sst_loss(logits, sst_labels.view(-1)) / args.batch_size
-                sst_loss.backward()
-                optimizer.step()
+            optimizer.zero_grad()
+            logits = model.predict_sentiment(sst_ids, sst_mask)
 
-                train_loss += sst_loss.item()
-                num_batches += 1
+            sst_loss = function_sst_loss(logits, sst_labels.view(-1)) / args.batch_size
+            sst_loss.backward()
+            optimizer.step()
 
-                train_loss = train_loss / (num_batches)
-                pbar.update(1)
+            train_loss += sst_loss.item()
+            num_batches += 1
+
+            train_loss = train_loss / (num_batches)
 
             
             
