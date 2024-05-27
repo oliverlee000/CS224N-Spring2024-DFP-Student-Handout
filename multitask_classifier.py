@@ -221,7 +221,7 @@ def train_multitask(args):
             sts_mask_1 = sts_mask_1.to(device)
             sts_ids_2 = sts_ids_2.to(device)
             sts_mask_2 = sts_mask_2.to(device)
-            sts_labels = sts_labels.to(device)
+            sts_labels = sts_labels.to(device).float().view(-1)
             
             optimizer.zero_grad()
             sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
