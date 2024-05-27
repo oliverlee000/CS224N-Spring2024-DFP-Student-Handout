@@ -74,16 +74,16 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = True
         # You will want to add layers here to perform the downstream tasks.
         # Layers for sentiment
-        self.sentiment_dropout = nn.Dropout(DROPOUT_PROB)
-        self.sentiment_dense = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        self.sst_layers = nn.ModuleList([FF(BERT_HIDDEN_SIZE, BERT_HIDDEN_SIZE) for _ in range(config.num_sst_layers - 1)])
+        self.sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
 
         # Layers for paraphrase
-        self.paraphrase_dropout = nn.Dropout(DROPOUT_PROB)
-        self.paraphrase_dense = nn.Linear(2*BERT_HIDDEN_SIZE, 1)
+        self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_para_layers - 1)])
+        self.para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
 
         # Layers for similarity
-        self.similarity_dropout = nn.Dropout(DROPOUT_PROB)
-        self.similarity_dense = nn.Linear(2*BERT_HIDDEN_SIZE, 1)
+        self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 1)])
+        self.sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
 
     def forward(self, input_ids, attention_mask):
         'Takes a batch of sentences and produces embeddings for them.'
@@ -103,9 +103,14 @@ class MultitaskBERT(nn.Module):
         Thus, your output should contain 5 logits for each sentence.
         '''
 
+        # Get embeddings from bert model
         output = self.bert(input_ids, attention_mask)
-        last_hidden_state = output['last_hidden_state'][:,0,:]
-        output = self.sentiment_dense(self.sentiment_dropout(last_hidden_state))
+        embeds = output['last_hidden_state'][:,0,:]
+
+        # Feed embeddings into sst layers
+        for i, layer_module in enumerate(self.sst_layers[:-1]):
+            embeds = layer_module(embeds, activation=True)
+        output = self.sst_layers[-1](embeds, activation=False)
         return output
 
 
@@ -116,11 +121,17 @@ class MultitaskBERT(nn.Module):
         Note that your output should be unnormalized (a logit); it will be passed to the sigmoid function
         during evaluation.
         '''
+
+        # Concatenate embeddings for both inputs
         output1 = self.bert(input_ids_1, attention_mask_1)
         output2 = self.bert(input_ids_2, attention_mask_2)
-        output_agr = torch.cat((output1['last_hidden_state'][:,0,:], output2['last_hidden_state'][:,0,:]), 1)
-        output_agr = self.paraphrase_dropout(output_agr)
-        output_agr = self.paraphrase_dense(output_agr)
+        embeds = torch.cat((output1['last_hidden_state'][:,0,:], output2['last_hidden_state'][:,0,:]), 1)
+
+        # Feed embeddings into para layers
+        for i, layer_module in enumerate(self.para_layers[:-1]):
+            embeds = layer_module(embeds, activation=True)
+        output_agr = self.para_layers[-1](embeds, activation=False)
+
         return output_agr
 
 
@@ -131,14 +142,45 @@ class MultitaskBERT(nn.Module):
         Note that your output should be unnormalized (a logit).
         '''
 
+        # Concatenate embeddings for both inputs
         output1 = self.bert(input_ids_1, attention_mask_1)
         output2 = self.bert(input_ids_2, attention_mask_2)
-        output_agr = torch.cat((output1['pooler_output'], output2['pooler_output']), 1)
-        output_agr = self.similarity_dropout(output_agr)
-        output_agr = self.similarity_dense(output_agr)
+        embeds = torch.cat((output1['pooler_output'], output2['pooler_output']), 1)
+
+        # Feed embeddings into sts layers
+        for i, layer_module in enumerate(self.sts_layers[:-1]):
+            embeds = layer_module(embeds, activation=True)
+        output_agr = self.sts_layers[-1](embeds, activation=False)
         return output_agr
 
+'''
+Consists exclusively of a feed forward layer
+'''
+class FF(nn.Module):
+    def __init__(self, hidden_size, output_size):
+        super().__init__()
+        # Feed forward.
+        self.dropout = nn.Dropout(DROPOUT_PROB)
+        self.dense = nn.Linear(hidden_size, output_size)
+        self.af = F.gelu
 
+
+    def forward(self, hidden_states, activation=True):
+        """
+        Put elements in feed forward.
+        Feed forward consists of:
+        1. a dropout layer,
+        2. a linear layer, and
+        3. an activation function.
+
+        If activation = True, use activation
+        """
+        # TODO
+        hidden_states = self.dropout(hidden_states)
+        output = self.dense(hidden_states)
+        if activation:
+            output = self.af(output)
+        return output
 
 def save_model(model, optimizer, args, config, filepath):
     save_info = {
@@ -198,6 +240,10 @@ def train_multitask(args):
               'fine_tune_mode': args.fine_tune_mode}
 
     config = SimpleNamespace(**config)
+
+    # Set layers for each task
+    config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
+        args.num_sst_layers, args.num_para_layers, args.num_sts_layers
 
     model = MultitaskBERT(config)
     model = model.to(device)
@@ -408,6 +454,11 @@ def get_args():
     parser = argparse.ArgumentParser()
     # Select task: "all" does all tasks
     parser.add_argument("--task", type=str, default = "all")
+
+    # Set num layers for each task
+    parser.add_argument("--num_sst_layers", type=int, default = 2)
+    parser.add_argument("--num_para_layers", type=int, default = 2)
+    parser.add_argument("--num_sts_layers", type=int, default = 2)
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
