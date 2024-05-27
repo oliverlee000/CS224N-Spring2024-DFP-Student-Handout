@@ -207,8 +207,7 @@ def train_multitask(args):
     best_dev_acc = 0
 
     # Run for the specified number of epochs.
-    #for epoch in range(args.epochs):
-    for epoch in range(1):
+    for epoch in range(args.epochs):
         model.train()
         train_loss = 0
         num_batches = 0
