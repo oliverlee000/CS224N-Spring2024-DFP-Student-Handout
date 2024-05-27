@@ -127,7 +127,7 @@ def model_eval_multitask(sentiment_dataloader,
             sts_y_pred.extend(y_hat)
             print(y_hat.shape)
             sts_y_true.extend(b_labels)
-            print(b_labels.shape)
+            #print(b_labels.shape)
             sts_sent_ids.extend(b_sent_ids)
         pearson_mat = np.corrcoef(sts_y_pred,sts_y_true)
         sts_corr = pearson_mat[1][0]
