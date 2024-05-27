@@ -217,6 +217,26 @@ def train_multitask(args):
         num_batches = 0
 
         with tqdm(total=len(para_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}") as pbar:
+            for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
+                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
+                                                                            sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
+                                                                            sts_batch['labels'])
+                sts_ids_1 = sts_ids_1.to(device)
+                sts_mask_1 = sts_mask_1.to(device)
+                sts_ids_2 = sts_ids_2.to(device)
+                sts_mask_2 = sts_mask_2.to(device)
+                sts_labels = sts_labels.to(device)
+                
+                optimizer.zero_grad()
+                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                #print(sts_logits.shape)
+                sts_loss = function_sts_loss(sts_logits, sts_labels.view(-1)) / args.batch_size
+                sts_loss.backward()
+                optimizer.step()
+
+                train_loss += sts_loss.item()
+                num_batches += 1
+
             for para_batch in tqdm(para_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
                 #for sst_batch, para_batch, sts_batch in tqdm(zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}"):
                 
@@ -236,26 +256,6 @@ def train_multitask(args):
                 para_loss.backward()
                 optimizer.step()
                 train_loss += para_loss.item()
-                num_batches += 1
-
-            for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
-                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
-                                                                            sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
-                                                                            sts_batch['labels'])
-                sts_ids_1 = sts_ids_1.to(device)
-                sts_mask_1 = sts_mask_1.to(device)
-                sts_ids_2 = sts_ids_2.to(device)
-                sts_mask_2 = sts_mask_2.to(device)
-                sts_labels = sts_labels.to(device)
-                
-                optimizer.zero_grad()
-                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                #print(sts_logits.shape)
-                sts_loss = function_sts_loss(sts_logits, sts_labels.view(-1)) / args.batch_size
-                sts_loss.backward()
-                optimizer.step()
-
-                train_loss += sts_loss.item()
                 num_batches += 1
 
             for sst_batch in tqdm(sst_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
