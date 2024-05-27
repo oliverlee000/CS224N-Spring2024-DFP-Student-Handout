@@ -304,12 +304,13 @@ def train_multitask(args):
     
         #sst_y_pred, sst_sent_ids, para_y_pred, para_sent_ids, sts_y_pred, sts_sent_ids = model_eval_test_multitask(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, model, device)
         sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-        overall_train_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
-        overall_dev_acc = (sst_y_pred + para_y_pred + sts_y_pred) / 3
+        overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
+        #overall_dev_acc = (sst_y_pred + para_y_pred + sts_y_pred) / 3
         if overall_dev_acc > best_dev_acc:
             best_dev_acc = overall_dev_acc
             save_model(model, optimizer, args, config, args.filepath)
-        print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
+        #print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
+        print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
 
 
 
