@@ -164,10 +164,6 @@ def train_multitask(args):
     in datasets.py to load in examples from the Quora and SemEval datasets.
     '''
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
-    function_sts_loss = nn.MSELoss(reduction='sum')
-    function_para_loss = nn.BCEWithLogitsLoss(reduction='sum')
-    function_sst_loss = nn.CrossEntropyLoss(reduction='sum')
-
 
     # Create the data and its corresponding datasets and dataloader.
     sst_train_data, num_labels,para_train_data, sts_train_data = load_multitask_data(args.sst_train,args.para_train,args.sts_train, split ='train')
@@ -230,7 +226,7 @@ def train_multitask(args):
             optimizer.zero_grad()
             sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
             #print(sts_logits.shape)
-            sts_loss = function_sts_loss(sts_logits, sts_labels.view(-1)) / args.batch_size
+            sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
             sts_loss.backward()
             optimizer.step()
 
@@ -252,7 +248,7 @@ def train_multitask(args):
             optimizer.zero_grad()
             para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
             para_logits = torch.squeeze(para_logits, 1)
-            para_loss = function_para_loss(para_logits, para_labels.view(-1)) / args.batch_size
+            para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels.view(-1), reduction='sum') / args.batch_size
             para_loss.backward()
             optimizer.step()
             train_loss += para_loss.item()
@@ -269,7 +265,7 @@ def train_multitask(args):
             optimizer.zero_grad()
             logits = model.predict_sentiment(sst_ids, sst_mask)
 
-            sst_loss = function_sst_loss(logits, sst_labels.view(-1)) / args.batch_size
+            sst_loss = F.cross_entropy(logits, sst_labels.view(-1), reduction='sum') / args.batch_size
             sst_loss.backward()
             optimizer.step()
 
