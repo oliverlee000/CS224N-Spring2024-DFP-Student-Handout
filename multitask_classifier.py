@@ -123,14 +123,16 @@ class MultitaskBERT(nn.Module):
         '''
 
         # Concatenate embeddings for both inputs
-        output1 = self.bert(input_ids_1, attention_mask_1)
-        output2 = self.bert(input_ids_2, attention_mask_2)
-        embeds = torch.cat((output1['last_hidden_state'][:,0,:], output2['last_hidden_state'][:,0,:]), 1)
+        output1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
+        output2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
+        return torch.dot(output1, output2)
+        '''
+        embeds = torch.cat((output1, output2), 1)
 
         # Feed embeddings into para layers
         for i, layer_module in enumerate(self.para_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
-        output_agr = self.para_layers[-1](embeds, activation=False)
+        output_agr = self.para_layers[-1](embeds, activation=False)'''
 
         return output_agr
 
