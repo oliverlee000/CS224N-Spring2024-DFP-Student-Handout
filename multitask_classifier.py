@@ -50,7 +50,7 @@ def seed_everything(seed=11711):
 
 
 BERT_HIDDEN_SIZE = 768
-N_SENTIMENT_CLASSES = 5 + 1
+N_SENTIMENT_CLASSES = 5
 DROPOUT_PROB = 0.1
 
 
@@ -83,7 +83,7 @@ class MultitaskBERT(nn.Module):
 
         # Layers for similarity
         self.similarity_dropout = nn.Dropout(DROPOUT_PROB)
-        self.similarity_dense = nn.Linear(2*BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
+        self.similarity_dense = nn.Linear(2*BERT_HIDDEN_SIZE, 1)
 
     def forward(self, input_ids, attention_mask):
         'Takes a batch of sentences and produces embeddings for them.'
@@ -104,8 +104,8 @@ class MultitaskBERT(nn.Module):
         '''
 
         output = self.bert(input_ids, attention_mask)
-        pooled_output = output['pooler_output']
-        output = self.sentiment_dense(self.sentiment_dropout(pooled_output))
+        last_hidden_state = output['last_hidden_state'][:,0,:]
+        output = self.sentiment_dense(self.sentiment_dropout(last_hidden_state))
         return output
 
 
@@ -118,7 +118,7 @@ class MultitaskBERT(nn.Module):
         '''
         output1 = self.bert(input_ids_1, attention_mask_1)
         output2 = self.bert(input_ids_2, attention_mask_2)
-        output_agr = torch.cat((output1['pooler_output'], output2['pooler_output']), 1)
+        output_agr = torch.cat((output1['last_hidden_state'][:,0,:], output2['last_hidden_state'][:,0,:]), 1)
         output_agr = self.paraphrase_dropout(output_agr)
         output_agr = self.paraphrase_dense(output_agr)
         return output_agr
@@ -166,7 +166,7 @@ def train_multitask(args):
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     function_sts_loss = nn.CrossEntropyLoss(reduction='sum')
     function_para_loss = nn.BCEWithLogitsLoss(reduction='sum')
-    function_sst_loss = nn.CrossEntropyLoss(reduction='sum')
+    function_sst_loss = nn.MSELoss(reduction='sum')
 
 
     # Create the data and its corresponding datasets and dataloader.
@@ -215,8 +215,10 @@ def train_multitask(args):
         model.train()
         train_loss = 0
         num_batches = 0
-        with tqdm(total=len(sst_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}") as pbar:
-            for sst_batch, para_batch, sts_batch in tqdm(zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}"):
+
+        with tqdm(total=len(para_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}") as pbar:
+            for para_batch in tqdm(para_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
+                #for sst_batch, para_batch, sts_batch in tqdm(zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}"):
                 
                 para_ids_1, para_mask_1, para_ids_2, para_mask_2, para_labels = (para_batch['token_ids_1'], para_batch['attention_mask_1'],
                                                                                 para_batch['token_ids_2'], para_batch['attention_mask_2'],
@@ -233,10 +235,10 @@ def train_multitask(args):
                 para_loss = function_para_loss(para_logits, para_labels.view(-1)) / args.batch_size
                 para_loss.backward()
                 optimizer.step()
-
                 train_loss += para_loss.item()
                 num_batches += 1
 
+            for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
                                                                             sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
                                                                             sts_batch['labels'])
@@ -256,6 +258,7 @@ def train_multitask(args):
                 train_loss += sts_loss.item()
                 num_batches += 1
 
+            for sst_batch in tqdm(sst_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}"):
                 sst_ids, sst_mask, sst_labels = (sst_batch['token_ids'],
                                         sst_batch['attention_mask'], sst_batch['labels'])
 
@@ -446,4 +449,5 @@ if __name__ == "__main__":
     args.filepath = f'{args.fine_tune_mode}-{args.epochs}-{args.lr}-multitask.pt' # Save path.
     seed_everything(args.seed)  # Fix the seed for reproducibility.
     train_multitask(args)
+    print("HERE")
     test_multitask(args)
