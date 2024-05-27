@@ -352,6 +352,14 @@ def train_multitask(args):
         #sst_y_pred, sst_sent_ids, para_y_pred, para_sent_ids, sts_y_pred, sts_sent_ids = model_eval_test_multitask(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, model, device)
         sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
         overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
+        # Change accuracy if we just specify one task
+        if args.task == "sst":
+            overall_dev_acc = sentiment_accuracy
+        elif args.task == "para":
+            overall_dev_acc = paraphrase_accuracy
+        elif args.task == "sts":
+            overall_dev_acc = sts_corr
+
         #overall_dev_acc = (sst_y_pred + para_y_pred + sts_y_pred) / 3
         if overall_dev_acc > best_dev_acc:
             best_dev_acc = overall_dev_acc
@@ -456,9 +464,9 @@ def get_args():
     parser.add_argument("--task", type=str, default = "all")
 
     # Set num layers for each task
-    parser.add_argument("--num_sst_layers", type=int, default = 2)
-    parser.add_argument("--num_para_layers", type=int, default = 2)
-    parser.add_argument("--num_sts_layers", type=int, default = 2)
+    parser.add_argument("--num_sst_layers", type=int, default = 3)
+    parser.add_argument("--num_para_layers", type=int, default = 3)
+    parser.add_argument("--num_sts_layers", type=int, default = 3)
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
