@@ -444,5 +444,4 @@ if __name__ == "__main__":
     args.filepath = f'{args.fine_tune_mode}-{args.epochs}-{args.lr}-multitask.pt' # Save path.
     seed_everything(args.seed)  # Fix the seed for reproducibility.
     train_multitask(args)
-    print("HERE")
     test_multitask(args)
