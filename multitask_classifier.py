@@ -164,9 +164,9 @@ def train_multitask(args):
     in datasets.py to load in examples from the Quora and SemEval datasets.
     '''
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
-    function_sts_loss = nn.CrossEntropyLoss(reduction='sum')
+    function_sts_loss = nn.MSELoss(reduction='sum')
     function_para_loss = nn.BCEWithLogitsLoss(reduction='sum')
-    function_sst_loss = nn.MSELoss(reduction='sum')
+    function_sst_loss = nn.CrossEntropyLoss(reduction='sum')
 
 
     # Create the data and its corresponding datasets and dataloader.
