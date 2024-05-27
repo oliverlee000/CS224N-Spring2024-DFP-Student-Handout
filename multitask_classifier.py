@@ -75,7 +75,7 @@ class MultitaskBERT(nn.Module):
         # You will want to add layers here to perform the downstream tasks.
         # Layers for sentiment
         self.sentiment_dropout = nn.Dropout(DROPOUT_PROB)
-        self.sentiment_dense = nn.Linear(BERT_HIDDEN_SIZE, 1)
+        self.sentiment_dense = nn.Linear(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)
 
         # Layers for paraphrase
         self.paraphrase_dropout = nn.Dropout(DROPOUT_PROB)
@@ -303,12 +303,12 @@ def train_multitask(args):
         train_loss = train_loss / (num_batches)
         '''
 
-        overall_train_acc, train_f1 = model_eval_multitask(sst_train_dataloader, para_train_dataloader, sts_dev_dataloader, model, device)
-        #overall_dev_acc, dev_f1 = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-        #if overall_dev_acc > best_dev_acc:
-        #    best_dev_acc = overall_dev_acc
-        #    save_model(model, optimizer, args, config, args.filepath)
-        #print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
+        overall_train_acc, train_f1 = model_eval_test_multitask(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, model, device)
+        overall_dev_acc, dev_f1 = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+        if overall_dev_acc > best_dev_acc:
+            best_dev_acc = overall_dev_acc
+            save_model(model, optimizer, args, config, args.filepath)
+        print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
 
 
 
