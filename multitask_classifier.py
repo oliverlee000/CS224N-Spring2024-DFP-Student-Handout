@@ -365,7 +365,7 @@ def train_multitask(args):
             best_dev_acc = overall_dev_acc
             save_model(model, optimizer, args, config, args.filepath)
         #print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
-        print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
+        print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
 
 
 
