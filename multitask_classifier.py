@@ -285,9 +285,16 @@ def train_multitask(args):
                 # Trying Cosine Embedding Loss
 
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
-                cos_similarity_labels = torch.where(sts_labels == 0, -1, 1)
-                embedding_1, embedding_2 = model(sts_ids_1, sts_mask_1), model(sts_ids_2, sts_mask_2)
-                cos_loss = cosine_loss_fn(embedding_1, embedding_2, cos_similarity_labels)
+                # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
+                mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
+                cos_sim_labels = torch.where(sts_labels[mask] == 0, -1, 1)
+                cos_sim_ids_1 = sts_ids_1[mask,:]
+                cos_sim_ids_2 = sts_ids_2[mask,:]
+                cos_sim_mask_1 = sts_mask_1[mask,:]
+                cos_sim_mask_2 = sts_mask_2[mask,:]
+                cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
+                cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
+                cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
 
                 # Integrate Multiple Negatives Ranking Loss
                 embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
