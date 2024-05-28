@@ -216,6 +216,8 @@ def train_multitask(args):
     sst_dev_data, num_labels,para_dev_data, sts_dev_data = load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev, split ='train')
 
 
+    # Filtering out elements in sts_train_data
+
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
     sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
     para_train_data = SentencePairDataset(para_train_data, args)
@@ -255,6 +257,7 @@ def train_multitask(args):
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
+    sts_loss_fn = nn.CosineEmbeddingLoss()
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
@@ -318,8 +321,17 @@ def train_multitask(args):
                 sts_labels = sts_labels.to(device).float().view(-1)
                 
                 optimizer.zero_grad()
+
+                # Trying Cosine Embedding Loss
+
+                # Map labels with cosine labels -- equivalent is 1, unrelated is -1
+                sts_labels = torch.where(sts_labels == 0, -1, sts_labels)
+                sts_labels = torch.where(sts_labels > 0 and sts_labels < 5, 0, sts_labels)
+                sts_labels = torch.where(sts_labels == 5, )
+                sts_loss = sts_loss_fn(sts_ids_1, sts_ids_2, sts_labels)
+                '''
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
+                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size'''
                 sts_loss.backward()
                 optimizer.step()
 
