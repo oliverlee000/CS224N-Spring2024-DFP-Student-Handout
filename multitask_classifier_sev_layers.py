@@ -437,8 +437,10 @@ def train_multitask(args):
     config = SimpleNamespace(**config)
 
     # Set layers for each task
-    config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
-        args.num_sst_layers, args.num_para_layers, args.num_sts_layers
+    if args.multi_layer == 'multi-layer':
+       config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 2, 2, 2
+    else:
+        config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 1, 1, 1
 
     model = MultitaskBERT(config)
     model = model.to(device)
@@ -518,23 +520,39 @@ def train_multitask(args):
 
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
-                mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
-                cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
-                cos_sim_ids_1 = sts_ids_1[mask,:]
-                cos_sim_ids_2 = sts_ids_2[mask,:]
-                cos_sim_mask_1 = sts_mask_1[mask,:]
-                cos_sim_mask_2 = sts_mask_2[mask,:]
-                cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
-                cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
-                cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
+                if args.cos_sim_loss != 'no_cos_sim_loss':
+                    mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
+                    cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
+                    cos_sim_ids_1 = sts_ids_1[mask,:]
+                    cos_sim_ids_2 = sts_ids_2[mask,:]
+                    cos_sim_mask_1 = sts_mask_1[mask,:]
+                    cos_sim_mask_2 = sts_mask_2[mask,:]
+                    cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
+                    cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
+                    cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
+                    
+                    # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
+                    if args.cos_sim_loss != 'cos_sim_loss':
+                        sts_loss = cos_loss
+                    else:
+                        sts_loss += cos_loss
 
                 # Integrate Multiple Negatives Ranking Loss
-                mnr_loss = 0
-                '''
-                embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
-                mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))'''
+                if args.neg_ranking_loss != 'no_neg_ranking_loss':
+                    mnr_loss = 0
+                    # TODO: put mnr loss here
+                    '''
+                    embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
+                    mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))'''
+
+                    # if neg_ranking_loss flag is on, replace similarity loss with cosine similarity loss
+                    if args.neg_ranking_loss != 'neg_ranking_loss':
+                        sts_loss = mnr_loss
+                    else:
+                        sts_loss += mnr_loss
+
                 
-                sts_loss = sts_loss + mnr_loss + cos_loss
+                sts_loss = sts_loss + mnr_loss
 
                 sts_loss.backward()
                 optimizer.step()
@@ -709,11 +727,20 @@ def get_args():
     parser = argparse.ArgumentParser()
     # Select task: "all" does all tasks
     parser.add_argument("--task", type=str, default = "all")
+    # FLAGS for testing different models
 
-    # Set num layers for each task
-    parser.add_argument("--num_sst_layers", type=int, default = 2)
-    parser.add_argument("--num_para_layers", type=int, default = 2)
-    parser.add_argument("--num_sts_layers", type=int, default = 2)
+    # 1. Set num layers for each task
+    parser.add_argument("--multi_layer", type=str,
+                        choices=('multi-layer', 'one-layer'),
+                        default = 'one-layer')
+    # 2. Set cosine similarity loss for similarity task
+    parser.add_argument("--cos_sim_loss", type=str,
+                        choices=('cos_sim_loss', 'no_cos_sim_loss', 'hybrid_loss'),
+                        default = 'no_cos_sim_loss')
+    # 3. Set neg ranking loss for similarity task
+    parser.add_argument("--neg_ranking_loss", type=str,
+                        choices=('neg_ranking_loss', 'no_neg_ranking_loss', 'hybrid_loss'),
+                        default = 'no_neg_ranking_loss')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
