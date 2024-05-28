@@ -214,7 +214,7 @@ def train_multitask(args):
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
-    sts_loss_fn = nn.CosineEmbeddingLoss()
+    cosine_loss_fn = nn.CosineEmbeddingLoss()
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
@@ -277,30 +277,28 @@ def train_multitask(args):
                 
                 optimizer.zero_grad()
 
+                # Normal loss
+
+                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
+            
                 # Trying Cosine Embedding Loss
 
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
-                sts_labels = torch.where(sts_labels == 0, -1, sts_labels)
-                sts_labels = torch.where(sts_labels > 0 and sts_labels < 5, 0, sts_labels)
-                sts_labels = torch.where(sts_labels == 5, )
-                sts_loss = sts_loss_fn(sts_ids_1, sts_ids_2, sts_labels)
-                '''
-                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                cos_similarity_labels = torch.where(sts_labels == 0, -1, 1)
+                embedding_1, embedding_2 = model(sts_ids_1, sts_mask_1), model(sts_ids_2, sts_mask_2)
+                cos_loss = cosine_loss_fn(embedding_1, embedding_2, cos_similarity_labels)
 
-                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size'''
-                sts_loss.backward()
-                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
-                
                 # Integrate Multiple Negatives Ranking Loss
                 embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
                 mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))
                 
-                total_loss = sts_loss + mnr_loss
+                sts_loss = sts_loss + mnr_loss + cos_loss
 
-                total_loss.backward()
+                sts_loss.backward()
                 optimizer.step()
 
-                train_loss += total_loss.item()
+                train_loss += sts_loss.item()
                 num_batches += 1
         
         train_loss = train_loss / (num_batches)
