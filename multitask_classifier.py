@@ -287,7 +287,7 @@ def train_multitask(args):
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
                 mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
-                cos_sim_labels = torch.where(sts_labels[mask] == 0, -1, 1)
+                cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
                 cos_sim_ids_1 = sts_ids_1[mask,:]
                 cos_sim_ids_2 = sts_ids_2[mask,:]
                 cos_sim_mask_1 = sts_mask_1[mask,:]
@@ -297,8 +297,10 @@ def train_multitask(args):
                 cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
 
                 # Integrate Multiple Negatives Ranking Loss
+                mnr_loss = 0
+                '''
                 embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
-                mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))
+                mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))'''
                 
                 sts_loss = sts_loss + mnr_loss + cos_loss
 
