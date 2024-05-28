@@ -53,66 +53,109 @@ BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 DROPOUT_PROB = 0.1
 
-import torch.nn.functional as F
 
 class MultitaskBERT(nn.Module):
+    '''
+    This module should use BERT for 3 tasks:
+
+    - Sentiment classification (predict_sentiment)
+    - Paraphrase detection (predict_paraphrase)
+    - Semantic Textual Similarity (predict_similarity)
+    '''
     def __init__(self, config):
         super(MultitaskBERT, self).__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
+        # last-linear-layer mode does not require updating BERT paramters.
         assert config.fine_tune_mode in ["last-linear-layer", "full-model"]
         for param in self.bert.parameters():
             if config.fine_tune_mode == 'last-linear-layer':
                 param.requires_grad = False
             elif config.fine_tune_mode == 'full-model':
                 param.requires_grad = True
+        # You will want to add layers here to perform the downstream tasks.
+        # Layers for sentiment
         self.sst_layers = nn.ModuleList([FF(BERT_HIDDEN_SIZE, BERT_HIDDEN_SIZE) for _ in range(config.num_sst_layers - 1)])
         self.sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
+
+        # Layers for paraphrase
         self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_para_layers - 1)])
         self.para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
+
+        # Layers for similarity
         self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 1)])
         self.sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
 
     def forward(self, input_ids, attention_mask):
+        'Takes a batch of sentences and produces embeddings for them.'
+
+        # The final BERT embedding is the hidden state of [CLS] token (the first token)
+        # Here, you can start by just returning the embeddings straight from BERT.
+        # When thinking of improvements, you can later try modifying this
+        # (e.g., by adding other layers).
+        ### TODO
         output = self.bert(input_ids, attention_mask)
         return output['last_hidden_state']
 
     def predict_sentiment(self, input_ids, attention_mask):
+        '''Given a batch of sentences, outputs logits for classifying sentiment.
+        There are 5 sentiment classes:
+        (0 - negative, 1- somewhat negative, 2- neutral, 3- somewhat positive, 4- positive)
+        Thus, your output should contain 5 logits for each sentence.
+        '''
+
+        # Get embeddings from bert model
         output = self.bert(input_ids, attention_mask)
         embeds = output['last_hidden_state'][:,0,:]
+
+        # Feed embeddings into sst layers
         for i, layer_module in enumerate(self.sst_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
         output = self.sst_layers[-1](embeds, activation=False)
         return output
 
-    def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+
+    def predict_paraphrase(self,
+                           input_ids_1, attention_mask_1,
+                           input_ids_2, attention_mask_2):
+        '''Given a batch of pairs of sentences, outputs a single logit for predicting whether they are paraphrases.
+        Note that your output should be unnormalized (a logit); it will be passed to the sigmoid function
+        during evaluation.
+        '''
+
+        # Concatenate embeddings for both inputs
         output1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
         output2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
+
+        # If there are no para linear layers, just take the dot product
         if len(self.para_layers) == 0:
             return torch.dot(output1, output2)
         embeds = torch.cat((output1, output2), 1)
+
+        # Feed embeddings into para layers
         for i, layer_module in enumerate(self.para_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
         output_agr = self.para_layers[-1](embeds, activation=False)
+
         return output_agr
 
-    def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+
+    def predict_similarity(self,
+                           input_ids_1, attention_mask_1,
+                           input_ids_2, attention_mask_2):
+        '''Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
+        Note that your output should be unnormalized (a logit).
+        '''
+
+        # Concatenate embeddings for both inputs
         output1 = self.bert(input_ids_1, attention_mask_1)
         output2 = self.bert(input_ids_2, attention_mask_2)
         embeds = torch.cat((output1['pooler_output'], output2['pooler_output']), 1)
+
+        # Feed embeddings into sts layers
         for i, layer_module in enumerate(self.sts_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
         output_agr = self.sts_layers[-1](embeds, activation=False)
         return output_agr
-
-    def multiple_negatives_ranking_loss(self, embeddings, batch_size):
-        similarity_matrix = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=-1)
-        labels = torch.arange(batch_size).to(similarity_matrix.device)
-        loss = F.cross_entropy(similarity_matrix, labels)
-        return loss
-
-    def cosine_similarity_fine_tuning(self, output1, output2):
-        cosine_sim = F.cosine_similarity(output1, output2, dim=-1)
-        return cosine_sim
 
 '''
 Consists exclusively of a feed forward layer
@@ -187,7 +230,7 @@ def train_multitask(args):
     sts_train_dataloader = DataLoader(sts_train_data, shuffle=True, batch_size=args.batch_size,
                                     collate_fn=sts_train_data.collate_fn)
     sts_dev_dataloader = DataLoader(sts_dev_data, shuffle=True, batch_size=args.batch_size,
-                                    collate_fn=sts_dev_data.collate_fn)   
+                                    collate_fn=sts_train_data.collate_fn)   
     sst_train_dataloader = DataLoader(sst_train_data, shuffle=True, batch_size=args.batch_size,
                                       collate_fn=sst_train_data.collate_fn)
     sst_dev_dataloader = DataLoader(sst_dev_data, shuffle=False, batch_size=args.batch_size,
@@ -242,6 +285,8 @@ def train_multitask(args):
         if args.task == "all" or args.task == "para":
             # Train paraphrase
             for para_batch in tqdm(para_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = paraphrase"):
+                #for sst_batch, para_batch, sts_batch in tqdm(zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader), desc=f"Epoch {epoch+1}/{args.epochs}"):
+                
                 para_ids_1, para_mask_1, para_ids_2, para_mask_2, para_labels = (para_batch['token_ids_1'], para_batch['attention_mask_1'],
                                                                                 para_batch['token_ids_2'], para_batch['attention_mask_2'],
                                                                                 para_batch['labels'])
@@ -275,23 +320,43 @@ def train_multitask(args):
                 optimizer.zero_grad()
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
-                
-                # Integrate Multiple Negatives Ranking Loss
-                embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
-                mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))
-                
-                total_loss = sts_loss + mnr_loss
-
-                total_loss.backward()
+                sts_loss.backward()
                 optimizer.step()
 
-                train_loss += total_loss.item()
+                train_loss += sts_loss.item()
                 num_batches += 1
         
         train_loss = train_loss / (num_batches)
+ 
+        '''
+        model.train()
+        train_loss = 0
+        num_batches = 0
+        for batch in tqdm(sst_train_dataloader, desc=f'train-{epoch}', disable=TQDM_DISABLE):
+            b_ids, b_mask, b_labels = (batch['token_ids'],
+                                       batch['attention_mask'], batch['labels'])
+
+            b_ids = b_ids.to(device)
+            b_mask = b_mask.to(device)
+            b_labels = b_labels.to(device)
+
+            optimizer.zero_grad()
+            logits = model.predict_sentiment(b_ids, b_mask)
+            loss = F.cross_entropy(logits, b_labels.view(-1), reduction='sum') / args.batch_size
+
+            loss.backward()
+            optimizer.step()
+
+            train_loss += loss.item()
+            num_batches += 1
+
+        train_loss = train_loss / (num_batches)
+        '''
     
+        #sst_y_pred, sst_sent_ids, para_y_pred, para_sent_ids, sts_y_pred, sts_sent_ids = model_eval_test_multitask(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, model, device)
         sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
         overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
+        # Change accuracy if we just specify one task
         if args.task == "sst":
             overall_dev_acc = sentiment_accuracy
         elif args.task == "para":
@@ -299,10 +364,14 @@ def train_multitask(args):
         elif args.task == "sts":
             overall_dev_acc = sts_corr
 
+        #overall_dev_acc = (sst_y_pred + para_y_pred + sts_y_pred) / 3
         if overall_dev_acc > best_dev_acc:
             best_dev_acc = overall_dev_acc
             save_model(model, optimizer, args, config, args.filepath)
+        #print(f"Epoch {epoch}: train loss :: {train_loss :.3f}, train acc :: {overall_train_acc :.3f}, dev acc :: {overall_dev_acc :.3f}")
         print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
+
+
 
 
 def test_multitask(args):
