@@ -34,6 +34,28 @@ from datasets import (
 
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
+class LoRADoRA(nn.Module):
+    def __init__(self, dimIn, dimOut, rank=4, bias=None, weight=None):
+        super().__init__()
+        if bias:
+            self.bias = nn.Parameter(bias, requires_grad=False)
+        else:
+            self.bias = nn.zeros(dimOut)
+            self.bias = nn.Parameter(self.bias, requires_grad=False)
+        if weight:
+            self.weight = nn.Parameter(weight, requires_grad=False)
+        else:
+            self.weight = nn.zeros(dimOut, dimIn)
+            self.weight = nn.Parameter(self.weight, requires_grad=False)
+        
+        #calculate m vector using description in handout
+        self.mVector = self.weight ** 2
+        self.mVector = torch.sqrt(torch.sum(self.mVector, dim=0))
+
+        aMatrix = torch.zeros(dimOut, rank)
+        bMatrix = torch.zeros(rank, dimIn) #replace with d and k
+
+
 # Evaluate multitask model on paraphrase only.
 def model_eval_para(paraphrase_dataloader, model, device):
     with torch.no_grad():
