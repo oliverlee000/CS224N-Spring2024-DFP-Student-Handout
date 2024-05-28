@@ -32,7 +32,7 @@ from datasets import (
     load_multitask_data
 )
 
-from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
+from evaluation import model_eval_sst, model_eval_para, model_eval_sts, model_eval_test_sst, model_eval_test_para, model_eval_test_sst, model_eval_multitask, model_eval_test_multitask
 
 
 TQDM_DISABLE=False
@@ -369,50 +369,108 @@ def test_multitask(args):
         sts_dev_dataloader = DataLoader(sts_dev_data, shuffle=False, batch_size=args.batch_size,
                                         collate_fn=sts_dev_data.collate_fn)
 
-        dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids, \
-            dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids, \
-            dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_multitask(sst_dev_dataloader,
-                                                                    para_dev_dataloader,
-                                                                    sts_dev_dataloader, model, device)
+        if args.task == "all":
+            dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids, \
+                dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids, \
+                dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_multitask(sst_dev_dataloader,
+                                                                        para_dev_dataloader,
+                                                                        sts_dev_dataloader, model, device)
 
-        test_sst_y_pred, \
-            test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
-                model_eval_test_multitask(sst_test_dataloader,
-                                          para_test_dataloader,
-                                          sts_test_dataloader, model, device)
+            test_sst_y_pred, \
+                test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
+                    model_eval_test_multitask(sst_test_dataloader,
+                                            para_test_dataloader,
+                                            sts_test_dataloader, model, device)
 
-        with open(args.sst_dev_out, "w+") as f:
-            print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
-            f.write(f"id \t Predicted_Sentiment \n")
-            for p, s in zip(dev_sst_sent_ids, dev_sst_y_pred):
-                f.write(f"{p} , {s} \n")
+            with open(args.sst_dev_out, "w+") as f:
+                print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
+                f.write(f"id \t Predicted_Sentiment \n")
+                for p, s in zip(dev_sst_sent_ids, dev_sst_y_pred):
+                    f.write(f"{p} , {s} \n")
 
-        with open(args.sst_test_out, "w+") as f:
-            f.write(f"id \t Predicted_Sentiment \n")
-            for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
-                f.write(f"{p} , {s} \n")
+            with open(args.sst_test_out, "w+") as f:
+                f.write(f"id \t Predicted_Sentiment \n")
+                for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
+                    f.write(f"{p} , {s} \n")
 
-        with open(args.para_dev_out, "w+") as f:
-            print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
-            f.write(f"id \t Predicted_Is_Paraphrase \n")
-            for p, s in zip(dev_para_sent_ids, dev_para_y_pred):
-                f.write(f"{p} , {s} \n")
+            with open(args.para_dev_out, "w+") as f:
+                print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
+                f.write(f"id \t Predicted_Is_Paraphrase \n")
+                for p, s in zip(dev_para_sent_ids, dev_para_y_pred):
+                    f.write(f"{p} , {s} \n")
 
-        with open(args.para_test_out, "w+") as f:
-            f.write(f"id \t Predicted_Is_Paraphrase \n")
-            for p, s in zip(test_para_sent_ids, test_para_y_pred):
-                f.write(f"{p} , {s} \n")
+            with open(args.para_test_out, "w+") as f:
+                f.write(f"id \t Predicted_Is_Paraphrase \n")
+                for p, s in zip(test_para_sent_ids, test_para_y_pred):
+                    f.write(f"{p} , {s} \n")
 
-        with open(args.sts_dev_out, "w+") as f:
-            print(f"dev sts corr :: {dev_sts_corr :.3f}")
-            f.write(f"id \t Predicted_Similiary \n")
-            for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
-                f.write(f"{p} , {s} \n")
+            with open(args.sts_dev_out, "w+") as f:
+                print(f"dev sts corr :: {dev_sts_corr :.3f}")
+                f.write(f"id \t Predicted_Similiary \n")
+                for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
+                    f.write(f"{p} , {s} \n")
 
-        with open(args.sts_test_out, "w+") as f:
-            f.write(f"id \t Predicted_Similiary \n")
-            for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
-                f.write(f"{p} , {s} \n")
+            with open(args.sts_test_out, "w+") as f:
+                f.write(f"id \t Predicted_Similiary \n")
+                for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
+                    f.write(f"{p} , {s} \n")
+        elif args.task == "sst":
+            dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
+                                                                        model, device)
+
+            test_sst_y_pred, \
+                test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
+                    model_eval_test_sst(sst_test_dataloader,
+                                            para_test_dataloader,
+                                            sts_test_dataloader, model, device)
+
+            with open(args.sst_dev_out, "w+") as f:
+                print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
+                f.write(f"id \t Predicted_Sentiment \n")
+                for p, s in zip(dev_sst_sent_ids, dev_sst_y_pred):
+                    f.write(f"{p} , {s} \n")
+            with open(args.sst_test_out, "w+") as f:
+                f.write(f"id \t Predicted_Sentiment \n")
+                for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
+                    f.write(f"{p} , {s} \n")
+        elif args.task == "para":
+            dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids \
+                = model_eval_para(para_dev_dataloader, model, device)
+
+            test_sst_y_pred, \
+                test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
+                    model_eval_test_para(sst_test_dataloader,
+                                            para_test_dataloader,
+                                            sts_test_dataloader, model, device)
+
+            with open(args.para_dev_out, "w+") as f:
+                print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
+                f.write(f"id \t Predicted_Is_Paraphrase \n")
+                for p, s in zip(dev_para_sent_ids, dev_para_y_pred):
+                    f.write(f"{p} , {s} \n")
+
+            with open(args.para_test_out, "w+") as f:
+                f.write(f"id \t Predicted_Is_Paraphrase \n")
+                for p, s in zip(test_para_sent_ids, test_para_y_pred):
+                    f.write(f"{p} , {s} \n")
+        else:
+            dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_sts(sst_dev_dataloader,
+                                                                        para_dev_dataloader,
+                                                                        sts_dev_dataloader, model, device)
+
+            test_sts_y_pred, test_sts_sent_ids = \
+                    model_eval_test_sts(sts_test_dataloader, model, device)
+
+            with open(args.sts_dev_out, "w+") as f:
+                print(f"dev sts corr :: {dev_sts_corr :.3f}")
+                f.write(f"id \t Predicted_Similiary \n")
+                for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
+                    f.write(f"{p} , {s} \n")
+
+            with open(args.sts_test_out, "w+") as f:
+                f.write(f"id \t Predicted_Similiary \n")
+                for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
+                    f.write(f"{p} , {s} \n")
 
 
 def get_args():
