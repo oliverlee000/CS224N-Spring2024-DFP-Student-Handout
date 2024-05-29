@@ -204,19 +204,14 @@ def save_model(model, optimizer, args, config, filepath):
     print(f"save the model to {filepath}")
 
 '''
-If args.balance_sampling == 'under': Undersample from larger datasets to meet twice size of smallest.
+If args.balance_sampling != 1: Undersample from para by a factor of args.balance_sampling.
 '''
 def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
-    n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
 
-    sst_indices = torch.randperm(len(sst_train_data))[:min(len(sst_train_data), 2*n)]
-    sst_train_data = [sst_train_data[i] for i in sst_indices] 
-
-    para_indices = torch.randperm(len(para_train_data))[:min(len(para_train_data), 2*n)]
+    n = int(len(para_train_data)/args.balance_sampling)
+    para_indices = torch.randperm(len(para_train_data))[:n]
     para_train_data = [para_train_data[i] for i in para_indices]
 
-    sts_indices = torch.randperm(len(sts_train_data))[:min(len(sts_train_data), 2*n)]
-    sts_train_data = [sts_train_data[i] for i in sts_indices]
     return sst_train_data, para_train_data, sts_train_data
 
 '''
@@ -250,7 +245,7 @@ def train_multitask(args):
 
 
     # Filtering out elements in train_data
-    if args.balance_sampling != 'none':
+    if args.balance_sampling != 1:
         sst_train_data, para_train_data, sts_train_data = balance_sampling(sst_train_data, para_train_data, sts_train_data, args)
 
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
@@ -590,10 +585,9 @@ def get_args():
                         choices=('y', 'n', 'h'),
                         default = 'n')
     # 4. Balance sampling
-    parser.add_argument("--balance_sampling", type=str,
-                        help='under: undersample high-example tasks to balance number of examples for each, over: oversample low-example tasks to balance number of examples for each',
-                        choices=('under', 'none'),
-                        default = 'under')
+    parser.add_argument("--balance_sampling", type=int,
+                        help='under: undersample high-example tasks by factor of balance_sampling',
+                        default = 1)
     
     # 5. Boosted bert
     parser.add_argument("--boosted_bert", type=str,
