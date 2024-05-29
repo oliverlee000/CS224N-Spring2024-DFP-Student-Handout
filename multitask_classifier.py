@@ -183,9 +183,15 @@ If args.balance_sampling == 'under': UNdersample from larger datasets to meet tw
 '''
 def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
     n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
-    sst_train_data = sst_train_data[torch.randperm(0, len(sst_train_data))[:min(len(sst_train_data), 2*n)],:] 
-    para_train_data = para_train_data[torch.randperm(0, len(para_train_data))[:min(len(sst_train_data), 2*n)],:]
-    sts_train_data = sts_train_data[torch.randperm(0, len(sts_train_data))[:min(len(sst_train_data), 2*n)],:]
+    
+    sst_indices = torch.randperm(0, len(sst_train_data))[:min(len(sst_train_data), 2*n)]
+    sst_train_data = sst_train_data[sst_indices,:] 
+
+    para_indices = torch.randperm(0, len(para_train_data))[:min(len(sst_train_data), 2*n)]
+    para_train_data = para_train_data[para_indices,:]
+
+    sts_indices = torch.randperm(0, len(sts_train_data))[:min(len(sst_train_data), 2*n)]
+    sts_train_data = sts_train_data[sts_indices,:]
     return sst_train_data, para_train_data, sst_train_data
 
 '''
