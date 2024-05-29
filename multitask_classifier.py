@@ -42,13 +42,12 @@ from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_mul
 class LoRADoRA(nn.Module):
     def __init__(self, dimIn, dimOut, rank=4, bias=None, weight=None):
         super().__init__()
-        print("HERE HERE HERE")
-        if bias:
+        if bias != None:
             self.bias = nn.Parameter(bias, requires_grad=False)
         else:
             self.bias = nn.zeros(dimOut)
             self.bias = nn.Parameter(self.bias, requires_grad=False)
-        if weight:
+        if weight != None:
             self.weight = nn.Parameter(weight, requires_grad=False)
         else:
             self.weight = nn.zeros(dimOut, dimIn)
@@ -58,24 +57,24 @@ class LoRADoRA(nn.Module):
         self.mVector = self.weight ** 2
         self.mVector = torch.sqrt(torch.sum(self.mVector, dim=0))
 
-        self.aMatrix = torch.randn(d, rank)
-        self.aMatrix = nn.Parameter(self.aMatrix * 1 / torch.sqrt(torch.tensor(rank).float()))
+        self.aMatrix = torch.randn(dimOut, rank)
+        stdDev = 1 / torch.sqrt(torch.tensor(rank).float())
+        self.aMatrix = nn.Parameter(self.aMatrix * stdDev)
         self.bMatrix = torch.zeros(rank, dimIn) #replace with d and k
         self.bMatrix = nn.Parameter(self.bMatrix)
     def forward(self, x):
         loraMatrix = torch.matmul(self.aMatrix, self.bMatrix) + self.weight
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
-        return F.linear(loraMatrix / columnNorm * self.mVector)
+        return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
 
 
 def implementDoraLayer(model):
     for name, module in model.named_children():
-        print("HEREEEE")
         if isinstance(module, nn.Linear):
             dimIn = module.in_features
             dimOut = module.out_features
             #model.add_module(name, LoRADoRA(dimOut, dimIn, rank=4, bias=module.bias, weight=module.weight))
-            setattr(model, name, LoRADoRA(dimOut, dimIn, rank=4, bias=module.bias.data.clone(), weight=module.weight.data.clone()))
+            setattr(model, name, LoRADoRA(dimOut=dimOut, dimIn=dimIn, rank=4, bias=module.bias.data.clone(), weight=module.weight.data.clone()))
         else:
             implementDoraLayer(module)
 
@@ -278,6 +277,7 @@ def train_multitask(args):
 
     config = SimpleNamespace(**config)
 
+
     # Set layers for each task
     if args.multi_layer == 'y':
        config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 2, 2, 2
@@ -286,7 +286,7 @@ def train_multitask(args):
 
     model = MultitaskBERT(config)
     model = model.to(device)
-
+    implementDoraLayer(model)
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
