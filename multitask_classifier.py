@@ -285,6 +285,7 @@ def train_multitask(args):
         args.sst_layers, args.para_layers, args.sts_layers
 
     model = MultitaskBERT(config)
+    #print(model.parameters())
     
     # Change model to boosted if flag is on
     if args.boosted_bert == "y":
