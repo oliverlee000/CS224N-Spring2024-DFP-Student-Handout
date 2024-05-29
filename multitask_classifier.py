@@ -67,6 +67,7 @@ class LoRADoRA(nn.Module):
         self.bMatrix = nn.Parameter(self.bMatrix).to(device)
     def forward(self, x):
         x = x.to(self.aMatrix.device)
+        print("FORWARD LORA DORA")
         loraMatrix = torch.matmul(self.aMatrix, self.bMatrix) + self.weight
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
