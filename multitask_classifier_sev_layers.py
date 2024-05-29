@@ -437,7 +437,7 @@ def train_multitask(args):
     config = SimpleNamespace(**config)
 
     # Set layers for each task
-    if args.multi_layer == 'multi-layer':
+    if args.multi_layer == 'y':
        config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 2, 2, 2
     else:
         config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 1, 1, 1
@@ -520,7 +520,7 @@ def train_multitask(args):
 
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
-                if args.cos_sim_loss != 'no_cos_sim_loss':
+                if args.cos_sim_loss != 'n':
                     mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
                     cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
                     cos_sim_ids_1 = sts_ids_1[mask,:]
@@ -532,13 +532,13 @@ def train_multitask(args):
                     cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
-                    if args.cos_sim_loss != 'cos_sim_loss':
+                    if args.cos_sim_loss == 'y':
                         sts_loss = cos_loss
                     else:
                         sts_loss += cos_loss
 
                 # Integrate Multiple Negatives Ranking Loss
-                if args.neg_ranking_loss != 'no_neg_ranking_loss':
+                if args.neg_ranking_loss != 'n':
                     mnr_loss = 0
                     # TODO: put mnr loss here
                     '''
@@ -546,7 +546,7 @@ def train_multitask(args):
                     mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))'''
 
                     # if neg_ranking_loss flag is on, replace similarity loss with cosine similarity loss
-                    if args.neg_ranking_loss != 'neg_ranking_loss':
+                    if args.neg_ranking_loss == 'y':
                         sts_loss = mnr_loss
                     else:
                         sts_loss += mnr_loss
@@ -735,12 +735,16 @@ def get_args():
                         default = 'one-layer')
     # 2. Set cosine similarity loss for similarity task
     parser.add_argument("--cos_sim_loss", type=str,
-                        choices=('cos_sim_loss', 'no_cos_sim_loss', 'hybrid_loss'),
-                        default = 'no_cos_sim_loss')
+                        choices=('y', 'n', 'h'),
+                        default = 'n')
     # 3. Set neg ranking loss for similarity task
     parser.add_argument("--neg_ranking_loss", type=str,
-                        choices=('neg_ranking_loss', 'no_neg_ranking_loss', 'hybrid_loss'),
-                        default = 'no_neg_ranking_loss')
+                        choices=('y', 'n', 'h'),
+                        default = 'n')
+    # 4. Balance sampling
+    parser.add_argument("--balance_sampling", type=str,
+                        choices=('y', 'n', 'h'),
+                        default = 'n')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
