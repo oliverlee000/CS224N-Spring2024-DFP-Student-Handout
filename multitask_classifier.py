@@ -32,6 +32,7 @@ from datasets import (
     load_multitask_data
 )
 
+from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_para, model_eval_test_sst, model_eval_test_sts
 from evaluation import model_eval_sst, model_eval_para, model_eval_sts, model_eval_multitask, model_eval_test_multitask
 
 # Evaluate multitask model on paraphrase only.
