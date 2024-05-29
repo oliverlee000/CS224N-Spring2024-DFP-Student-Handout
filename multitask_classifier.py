@@ -37,9 +37,12 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
 
+#dimIn = k
+#dimOut = d
 class LoRADoRA(nn.Module):
     def __init__(self, dimIn, dimOut, rank=4, bias=None, weight=None):
         super().__init__()
+        print("HERE HERE HERE")
         if bias:
             self.bias = nn.Parameter(bias, requires_grad=False)
         else:
@@ -55,8 +58,26 @@ class LoRADoRA(nn.Module):
         self.mVector = self.weight ** 2
         self.mVector = torch.sqrt(torch.sum(self.mVector, dim=0))
 
-        aMatrix = torch.zeros(dimOut, rank)
-        bMatrix = torch.zeros(rank, dimIn) #replace with d and k
+        self.aMatrix = torch.randn(d, rank)
+        self.aMatrix = nn.Parameter(self.aMatrix * 1 / torch.sqrt(torch.tensor(rank).float()))
+        self.bMatrix = torch.zeros(rank, dimIn) #replace with d and k
+        self.bMatrix = nn.Parameter(self.bMatrix)
+    def forward(self, x):
+        loraMatrix = torch.matmul(self.aMatrix, self.bMatrix) + self.weight
+        columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
+        return F.linear(loraMatrix / columnNorm * self.mVector)
+
+
+def implementDoraLayer(model):
+    for name, module in model.named_children():
+        print("HEREEEE")
+        if isinstance(module, nn.Linear):
+            dimIn = module.in_features
+            dimOut = module.out_features
+            #model.add_module(name, LoRADoRA(dimOut, dimIn, rank=4, bias=module.bias, weight=module.weight))
+            setattr(model, name, LoRADoRA(dimOut, dimIn, rank=4, bias=module.bias.data.clone(), weight=module.weight.data.clone()))
+        else:
+            implementDoraLayer(module)
 
 TQDM_DISABLE=False
 
