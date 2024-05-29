@@ -46,19 +46,19 @@ class LoRADoRA(nn.Module):
         super().__init__()
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if bias != None:
-            self.bias = nn.Parameter(bias, requires_grad=False)
+            self.bias = nn.Parameter(bias, requires_grad=False).to(device)
         else:
             self.bias = nn.zeros(dimOut)
-            self.bias = nn.Parameter(self.bias, requires_grad=False)
+            self.bias = nn.Parameter(self.bias, requires_grad=False).to(device)
         if weight != None:
-            self.weight = nn.Parameter(weight, requires_grad=False)
+            self.weight = nn.Parameter(weight, requires_grad=False).to(device)
         else:
             self.weight = nn.zeros(dimOut, dimIn)
-            self.weight = nn.Parameter(self.weight, requires_grad=False)
+            self.weight = nn.Parameter(self.weight, requires_grad=False).to(device)
         
         #calculate m vector using description in handout
         self.mVector = self.weight ** 2
-        self.mVector = torch.sqrt(torch.sum(self.mVector, dim=0))
+        self.mVector = torch.sqrt(torch.sum(self.mVector, dim=0)).to(device)
 
         self.aMatrix = torch.randn(dimOut, rank)
         stdDev = 1 / torch.sqrt(torch.tensor(rank).float())
