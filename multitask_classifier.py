@@ -24,6 +24,8 @@ from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
 
+from boosted_bert import BoostedBERT
+
 from datasets import (
     SentenceClassificationDataset,
     SentenceClassificationTestDataset,
@@ -110,7 +112,7 @@ class MultitaskBERT(nn.Module):
         self.sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
         self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_para_layers - 1)])
         self.para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
-        self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 1)])
+        self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE, relu=True) for _ in range(config.num_sts_layers - 1)])
         self.sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
 
     def forward(self, input_ids, attention_mask):
@@ -159,12 +161,14 @@ class MultitaskBERT(nn.Module):
 Consists exclusively of a feed forward layer
 '''
 class FF(nn.Module):
-    def __init__(self, hidden_size, output_size):
+    def __init__(self, hidden_size, output_size, relu=False):
         super().__init__()
         # Feed forward.
         self.dropout = nn.Dropout(DROPOUT_PROB)
         self.dense = nn.Linear(hidden_size, output_size)
         self.af = F.gelu
+        if relu:
+            self.af = F.relu
 
 
     def forward(self, hidden_states, activation=True):
@@ -271,7 +275,7 @@ def train_multitask(args):
     # Init model.
     config = {'hidden_dropout_prob': args.hidden_dropout_prob,
               'num_labels': num_labels,
-              'hidden_size': 768,
+              'hidden_size': BERT_HIDDEN_SIZE,
               'data_dir': '.',
               'fine_tune_mode': args.fine_tune_mode}
 
@@ -279,12 +283,16 @@ def train_multitask(args):
 
 
     # Set layers for each task
-    if args.multi_layer == 'y':
-       config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 2, 2, 2
-    else:
-        config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 1, 1, 1
+    config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
+        args.sst_layers, args.para_layers, args.sts_layers
 
     model = MultitaskBERT(config)
+    
+    # Change model to boosted if flag is on
+    if args.boosted_bert == "y":
+        model = BoostedBERT(config)
+
+
     model = model.to(device)
     implementDoraLayer(model)
     lr = args.lr
@@ -560,10 +568,19 @@ def get_args():
     parser.add_argument("--task", type=str, default = "all")
     # FLAGS for testing different models
 
-    # 1. Set num layers for each task
-    parser.add_argument("--multi_layer", type=str,
-                        choices=('multi-layer', 'one-layer'),
-                        default = 'multi-layer')
+    # 1a. Set num layers for each task
+    parser.add_argument("--sst_layers", type=int,
+                        default = 2)
+    
+    # 1b. Set num layers for each task
+    parser.add_argument("--para_layers", type=int,
+                        default= 2)
+    
+    # 1c. Set num layers for each task
+    parser.add_argument("--sts_layers", type = int,
+                        default = 2)
+    
+
     # 2. Set cosine similarity loss for similarity task
     parser.add_argument("--cos_sim_loss", type=str,
                         choices=('y', 'n', 'h'),
@@ -577,6 +594,11 @@ def get_args():
                         help='under: undersample high-example tasks to balance number of examples for each, over: oversample low-example tasks to balance number of examples for each',
                         choices=('under', 'none'),
                         default = 'under')
+    
+    # 5. Boosted bert
+    parser.add_argument("--boosted_bert", type=str,
+                        choices=('y', 'n'),
+                        default = 'n')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
