@@ -42,10 +42,10 @@ class BoostedBERT(nn.Module):
         return self.models[SST].predict_sentiment(input_ids, attention_mask)
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        return self.models[PARA].predict_sentiment(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+        return self.models[PARA].predict_paraphrase(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        return self.models[STS].predict_sentiment(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+        return self.models[STS].predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
     
     def multiple_negatives_ranking_loss(self, embeddings, batch_size):
         similarity_matrix = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=-1)
