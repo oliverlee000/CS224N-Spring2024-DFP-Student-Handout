@@ -179,16 +179,13 @@ def save_model(model, optimizer, args, config, filepath):
     print(f"save the model to {filepath}")
 
 '''
-If args.balance_sampling == 'over': Oversample from smaller datasets to meet size of largest.
-If args.balance_sampling == 'under': UNdersample from larger datasets to meet size of smallest.
+If args.balance_sampling == 'under': UNdersample from larger datasets to meet twice size of smallest.
 '''
 def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
     n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
-    if args.balance_sampling == 'over':
-        n = max(len(sst_train_data), len(para_train_data), len(sts_train_data))
-    sst_train_data = sst_train_data[torch.randperm(0, len(sst_train_data))[:n],:] 
-    para_train_data = para_train_data[torch.randperm(0, len(para_train_data))[:n],:]
-    sts_train_data = sts_train_data[torch.randperm(0, len(sts_train_data))[:n],:]
+    sst_train_data = sst_train_data[torch.randperm(0, len(sst_train_data))[:min(len(sst_train_data), 2*n)],:] 
+    para_train_data = para_train_data[torch.randperm(0, len(para_train_data))[:min(len(sst_train_data), 2*n)],:]
+    sts_train_data = sts_train_data[torch.randperm(0, len(sts_train_data))[:min(len(sst_train_data), 2*n)],:]
     return sst_train_data, para_train_data, sst_train_data
 
 '''
@@ -551,8 +548,8 @@ def get_args():
     # 4. Balance sampling
     parser.add_argument("--balance_sampling", type=str,
                         help='under: undersample high-example tasks to balance number of examples for each, over: oversample low-example tasks to balance number of examples for each',
-                        choices=('under', 'over', 'none'),
-                        default = 'none')
+                        choices=('under', 'none'),
+                        default = 'under')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
