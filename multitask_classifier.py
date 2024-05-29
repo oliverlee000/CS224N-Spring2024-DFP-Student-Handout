@@ -24,6 +24,8 @@ from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
 
+from boosted_bert import BoostedBERT
+
 from datasets import (
     SentenceClassificationDataset,
     SentenceClassificationTestDataset,
