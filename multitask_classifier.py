@@ -198,8 +198,8 @@ def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
 Cosine similarity loss function for similarity task.
 '''
 def cos_sim_loss(model, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
-    mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
-    cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
+    mask = torch.where((sts_labels < 1.0) | (sts_labels >= 4.0), True, False)
+    cos_sim_labels = torch.where(sts_labels[mask] < 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
     cos_sim_ids_1 = sts_ids_1[mask,:]
     cos_sim_ids_2 = sts_ids_2[mask,:]
     cos_sim_mask_1 = sts_mask_1[mask,:]
