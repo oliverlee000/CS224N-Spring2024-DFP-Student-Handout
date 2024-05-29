@@ -38,6 +38,34 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
+NUM_TASKS = 3
+SST = 0
+PARA = 1
+STS = 2
+
+class BertEnsemble(nn.Module):
+    def __init__(self, models):
+        super(BoostedBERT, self).__init__()
+        self.n = NUM_TASKS
+        self.models = config.models
+
+    def forward(self, input_ids, attention_mask):
+        return torch.sum([m(input_ids, attention_mask) for m in self.models]) / self.n
+
+    def predict_sentiment(self, input_ids, attention_mask):
+        return self.models[SST].predict_sentiment(input_ids, attention_mask)
+
+    def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        return self.models[PARA].predict_paraphrase(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+
+    def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        return self.models[STS].predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+    
+    def multiple_negatives_ranking_loss(self, embeddings, batch_size):
+        similarity_matrix = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=-1)
+        labels = torch.arange(batch_size).to(similarity_matrix.device)
+        loss = F.cross_entropy(similarity_matrix, labels)
+        return loss
 
 #dimIn = k
 #dimOut = d
@@ -421,24 +449,20 @@ def train_multitask(args):
                 num_batches += 1
         
         train_loss = train_loss / (num_batches)
-    
+
+        model = BertEnsemble([sstModel, paraModel, stsModel])
         sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-        #overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
-        if args.task == "sst" or "all":
+        overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
+        if args.task == "sst":
             overall_dev_acc = sentiment_accuracy
-            if sentiment_accuracy > sstBestDevAcc:
-                sstBestDevAcc = sentiment_accuracy
-                save_model(sstModel, sstOptimizer, args, config, args.filepath)
-        elif args.task == "para" or "all":
+        elif args.task == "para":
             overall_dev_acc = paraphrase_accuracy
-            if paraphrase_accuracy > paraBestDevAcc:
-                paraBestDevAcc = paraphrase_accuracy
-                save_model(paraModel, paraOptimizer, args, config, args.filepath)
-        elif args.task == "sts" or "all":
+        elif args.task == "sts":
             overall_dev_acc = sts_corr
-            if sts_corr > stsBestDevAcc:
-                stsBestDevAcc = sts_corr
-                save_model(stsModel, stsOptimizer, args, config, args.filepath)
+
+        if overall_dev_acc > best_dev_acc:
+            best_dev_acc = overall_dev_acc
+            save_model(model, sstOptimizer, args, config, args.filepath)
 
         print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
 
