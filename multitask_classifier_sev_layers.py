@@ -36,7 +36,7 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
-from boosted_bert import BoostedBert
+from boosted_bert import BoostedBERT
 
 class LoRADoRA(nn.Module):
     def __init__(self, dimIn, dimOut, rank=4, bias=None, weight=None):
@@ -348,8 +348,6 @@ def train_multitask(args):
                     else:
                         sts_loss += mnr_loss
 
-                
-                sts_loss = sts_loss + mnr_loss
 
                 sts_loss.backward()
                 optimizer.step()
