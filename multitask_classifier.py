@@ -323,7 +323,7 @@ def train_multitask(args):
 
                 sst_loss = F.cross_entropy(logits, sst_labels.view(-1), reduction='sum') / args.batch_size
                 sst_loss.backward()
-                optimizer.step()
+                #optimizer.step()
 
                 train_loss += sst_loss.item()
                 num_batches += 1
@@ -345,7 +345,7 @@ def train_multitask(args):
                 para_logits = torch.squeeze(para_logits, 1)
                 para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels.view(-1), reduction='sum') / args.batch_size
                 para_loss.backward()
-                optimizer.step()
+                #optimizer.step()
                 train_loss += para_loss.item()
                 num_batches += 1
 
@@ -397,10 +397,11 @@ def train_multitask(args):
 
 
                 sts_loss.backward()
-                optimizer.step()
+                #optimizer.step()
 
                 train_loss += sts_loss.item()
                 num_batches += 1
+        optimizer.step()
         
         train_loss = train_loss / (num_batches)
     
