@@ -32,242 +32,31 @@ from datasets import (
     load_multitask_data
 )
 
-from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_para, model_eval_test_sst, model_eval_test_sts
-from evaluation import model_eval_sst, model_eval_para, model_eval_sts, model_eval_multitask, model_eval_test_multitask
+from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_sst, model_eval_test_para, model_eval_test_sts
 
-# Evaluate multitask model on paraphrase only.
-def model_eval_para(paraphrase_dataloader, model, device):
-    with torch.no_grad():
-        para_y_true = []
-        para_y_pred = []
-        para_sent_ids = []
-        for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['labels'], batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.sigmoid().round().flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
-
-            para_y_pred.extend(y_hat)
-            para_y_true.extend(b_labels)
-            para_sent_ids.extend(b_sent_ids)
-
-        paraphrase_accuracy = np.mean(np.array(para_y_pred) == np.array(para_y_true))
-
-        print(f'Paraphrase detection accuracy: {paraphrase_accuracy:.3f}')
-
-        return (paraphrase_accuracy, para_y_pred, para_sent_ids)
-    
-# Evaluate multitask model on STS only.
-def model_eval_sts(sts_dataloader, model, device):
-    model.eval()  # Switch to eval model, will turn off randomness like dropout.
-
-    with torch.no_grad():
-        sts_y_true = []
-        sts_y_pred = []
-        sts_sent_ids = []
-        for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['labels'], batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
-
-            sts_y_pred.extend(y_hat)
-            sts_y_true.extend(b_labels)
-            sts_sent_ids.extend(b_sent_ids)
-        pearson_mat = np.corrcoef(sts_y_pred,sts_y_true)
-        sts_corr = pearson_mat[1][0]
-
-        print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
-
-        return (sts_corr, sts_y_pred, sts_sent_ids)
+from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
 
-# Evaluate multitask model on dev sets.
-def model_eval_multitask(sentiment_dataloader,
-                         paraphrase_dataloader,
-                         sts_dataloader,
-                         model, device):
-    model.eval()  # Switch to eval model, will turn off randomness like dropout.
-
-    with torch.no_grad():
-        # Evaluate sentiment classification.
-        sst_y_true = []
-        sst_y_pred = []
-        sst_sent_ids = []
-        for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            b_ids, b_mask, b_labels, b_sent_ids = batch['token_ids'], batch['attention_mask'], batch['labels'], batch['sent_ids']
-
-            b_ids = b_ids.to(device)
-            b_mask = b_mask.to(device)
-
-            logits = model.predict_sentiment(b_ids, b_mask)
-            y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
-
-            sst_y_pred.extend(y_hat)
-            sst_y_true.extend(b_labels)
-            sst_sent_ids.extend(b_sent_ids)
-
-        sentiment_accuracy = np.mean(np.array(sst_y_pred) == np.array(sst_y_true))
-
-        # Evaluate paraphrase detection.
-        para_y_true = []
-        para_y_pred = []
-        para_sent_ids = []
-        for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['labels'], batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.sigmoid().round().flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
-
-            para_y_pred.extend(y_hat)
-            para_y_true.extend(b_labels)
-            para_sent_ids.extend(b_sent_ids)
-
-        paraphrase_accuracy = np.mean(np.array(para_y_pred) == np.array(para_y_true))
-
-        # Evaluate semantic textual similarity.
-        sts_y_true = []
-        sts_y_pred = []
-        sts_sent_ids = []
-        for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['labels'], batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.flatten().cpu().numpy()
-            b_labels = b_labels.flatten().cpu().numpy()
-
-            sts_y_pred.extend(y_hat)
-            sts_y_true.extend(b_labels)
-            sts_sent_ids.extend(b_sent_ids)
-        pearson_mat = np.corrcoef(sts_y_pred,sts_y_true)
-        sts_corr = pearson_mat[1][0]
-
-        print(f'Sentiment classification accuracy: {sentiment_accuracy:.3f}')
-        print(f'Paraphrase detection accuracy: {paraphrase_accuracy:.3f}')
-        print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
-
-        return (sentiment_accuracy,sst_y_pred, sst_sent_ids,
-                paraphrase_accuracy, para_y_pred, para_sent_ids,
-                sts_corr, sts_y_pred, sts_sent_ids)
-
-
-   # Evaluate multitask model on sst test set only.
-def model_eval_test_sst(sentiment_dataloader, model, device):
-    model.eval()  # Switch to eval model, will turn off randomness like dropout.
-
-    with torch.no_grad():
-        # Evaluate sentiment classification.
-        sst_y_pred = []
-        sst_sent_ids = []
-        for step, batch in enumerate(tqdm(sentiment_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            b_ids, b_mask, b_sent_ids = batch['token_ids'], batch['attention_mask'],  batch['sent_ids']
-
-            b_ids = b_ids.to(device)
-            b_mask = b_mask.to(device)
-
-            logits = model.predict_sentiment(b_ids, b_mask)
-            y_hat = logits.argmax(dim=-1).flatten().cpu().numpy()
-
-            sst_y_pred.extend(y_hat)
-            sst_sent_ids.extend(b_sent_ids)
+class LoRADoRA(nn.Module):
+    def __init__(self, dimIn, dimOut, rank=4, bias=None, weight=None):
+        super().__init__()
+        if bias:
+            self.bias = nn.Parameter(bias, requires_grad=False)
+        else:
+            self.bias = nn.zeros(dimOut)
+            self.bias = nn.Parameter(self.bias, requires_grad=False)
+        if weight:
+            self.weight = nn.Parameter(weight, requires_grad=False)
+        else:
+            self.weight = nn.zeros(dimOut, dimIn)
+            self.weight = nn.Parameter(self.weight, requires_grad=False)
         
-        return (sst_y_pred, sst_sent_ids)
-    
-# Evaluate multitask model on para test set.
-def model_eval_test_para(paraphrase_dataloader, model, device):
-    model.eval()  # Switch to eval model, will turn off randomness like dropout.
+        #calculate m vector using description in handout
+        self.mVector = self.weight ** 2
+        self.mVector = torch.sqrt(torch.sum(self.mVector, dim=0))
 
-    with torch.no_grad():
-        # Evaluate paraphrase detection.
-        para_y_pred = []
-        para_sent_ids = []
-        for step, batch in enumerate(tqdm(paraphrase_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.sigmoid().round().flatten().cpu().numpy()
-
-            para_y_pred.extend(y_hat)
-            para_sent_ids.extend(b_sent_ids)
-        return (para_y_pred, para_sent_ids)
-    
-# Evaluate multitask model on sts test set.
-def model_eval_test_sts(sts_dataloader, model, device):
-    model.eval()  # Switch to eval model, will turn off randomness like dropout.
-
-    with torch.no_grad():
-        # Evaluate semantic textual similarity.
-        sts_y_pred = []
-        sts_sent_ids = []
-        for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
-            (b_ids1, b_mask1,
-             b_ids2, b_mask2,
-             b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
-                          batch['token_ids_2'], batch['attention_mask_2'],
-                          batch['sent_ids'])
-
-            b_ids1 = b_ids1.to(device)
-            b_mask1 = b_mask1.to(device)
-            b_ids2 = b_ids2.to(device)
-            b_mask2 = b_mask2.to(device)
-
-            logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.flatten().cpu().numpy()
-
-            sts_y_pred.extend(y_hat)
-            sts_sent_ids.extend(b_sent_ids)
-
-        return (sts_y_pred, sts_sent_ids)
-
+        aMatrix = torch.zeros(dimOut, rank)
+        bMatrix = torch.zeros(rank, dimIn) #replace with d and k
 
 TQDM_DISABLE=False
 
@@ -286,8 +75,6 @@ def seed_everything(seed=11711):
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 DROPOUT_PROB = 0.1
-
-import torch.nn.functional as F
 
 class MultitaskBERT(nn.Module):
     def __init__(self, config):
@@ -407,7 +194,14 @@ def train_multitask(args):
     sst_dev_data, num_labels,para_dev_data, sts_dev_data = load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev, split ='train')
 
 
-    # Filtering out elements in sts_train_data
+    # Filtering out elements in train_data
+    if args.balance_sampling != 'none':
+        n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
+        if args.balance_sampling == 'over':
+            n = max(len(sst_train_data), len(para_train_data), len(sts_train_data))
+        sst_train_data = sst_train_data[torch.randperm(0, len(sst_train_data))[:n],:] 
+        para_train_data = para_train_data[torch.randperm(0, len(para_train_data))[:n],:]
+        sts_train_data = sts_train_data[torch.randperm(0, len(sts_train_data))[:n],:]
 
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
     sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
@@ -439,8 +233,10 @@ def train_multitask(args):
     config = SimpleNamespace(**config)
 
     # Set layers for each task
-    config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
-        args.num_sst_layers, args.num_para_layers, args.num_sts_layers
+    if args.multi_layer == 'y':
+       config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 2, 2, 2
+    else:
+        config.num_sst_layers, config.num_para_layers, config.num_sts_layers = 1, 1, 1
 
     model = MultitaskBERT(config)
     model = model.to(device)
@@ -520,23 +316,37 @@ def train_multitask(args):
 
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
-                mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
-                cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
-                cos_sim_ids_1 = sts_ids_1[mask,:]
-                cos_sim_ids_2 = sts_ids_2[mask,:]
-                cos_sim_mask_1 = sts_mask_1[mask,:]
-                cos_sim_mask_2 = sts_mask_2[mask,:]
-                cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
-                cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
-                cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
+                if args.cos_sim_loss != 'n':
+                    mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
+                    cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
+                    cos_sim_ids_1 = sts_ids_1[mask,:]
+                    cos_sim_ids_2 = sts_ids_2[mask,:]
+                    cos_sim_mask_1 = sts_mask_1[mask,:]
+                    cos_sim_mask_2 = sts_mask_2[mask,:]
+                    cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
+                    cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
+                    cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
+                    
+                    # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
+                    if args.cos_sim_loss == 'y':
+                        sts_loss = cos_loss
+                    else:
+                        sts_loss += cos_loss
 
                 # Integrate Multiple Negatives Ranking Loss
-                mnr_loss = 0
-                '''
-                embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
-                mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))'''
-                
-                sts_loss = sts_loss + mnr_loss + cos_loss
+                if args.neg_ranking_loss != 'n':
+                    mnr_loss = 0
+                    # TODO: put mnr loss here
+                    '''
+                    embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
+                    mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))'''
+
+                    # if neg_ranking_loss flag is on, replace similarity loss with cosine similarity loss
+                    if args.neg_ranking_loss == 'y':
+                        sts_loss = mnr_loss
+                    else:
+                        sts_loss += mnr_loss
+
 
                 sts_loss.backward()
                 optimizer.step()
@@ -711,11 +521,25 @@ def get_args():
     parser = argparse.ArgumentParser()
     # Select task: "all" does all tasks
     parser.add_argument("--task", type=str, default = "all")
+    # FLAGS for testing different models
 
-    # Set num layers for each task
-    parser.add_argument("--num_sst_layers", type=int, default = 1)
-    parser.add_argument("--num_para_layers", type=int, default = 1)
-    parser.add_argument("--num_sts_layers", type=int, default = 1)
+    # 1. Set num layers for each task
+    parser.add_argument("--multi_layer", type=str,
+                        choices=('multi-layer', 'one-layer'),
+                        default = 'multi-layer')
+    # 2. Set cosine similarity loss for similarity task
+    parser.add_argument("--cos_sim_loss", type=str,
+                        choices=('y', 'n', 'h'),
+                        default = 'n')
+    # 3. Set neg ranking loss for similarity task
+    parser.add_argument("--neg_ranking_loss", type=str,
+                        choices=('y', 'n', 'h'),
+                        default = 'n')
+    # 4. Balance sampling
+    parser.add_argument("--balance_sampling", type=str,
+                        help='under: undersample high-example tasks to balance number of examples for each, over: oversample low-example tasks to balance number of examples for each',
+                        choices=('under', 'over', 'none'),
+                        default = 'none')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
