@@ -44,6 +44,7 @@ from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_mul
 class LoRADoRA(nn.Module):
     def __init__(self, dimIn, dimOut, rank=4, bias=None, weight=None):
         super().__init__()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if bias != None:
             self.bias = nn.Parameter(bias, requires_grad=False)
         else:
@@ -61,10 +62,11 @@ class LoRADoRA(nn.Module):
 
         self.aMatrix = torch.randn(dimOut, rank)
         stdDev = 1 / torch.sqrt(torch.tensor(rank).float())
-        self.aMatrix = nn.Parameter(self.aMatrix * stdDev)
+        self.aMatrix = nn.Parameter(self.aMatrix * stdDev).to(device)
         self.bMatrix = torch.zeros(rank, dimIn) #replace with d and k
-        self.bMatrix = nn.Parameter(self.bMatrix)
+        self.bMatrix = nn.Parameter(self.bMatrix).to(device)
     def forward(self, x):
+        x = x.to(self.aMatrix.device)
         loraMatrix = torch.matmul(self.aMatrix, self.bMatrix) + self.weight
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
