@@ -178,6 +178,33 @@ def save_model(model, optimizer, args, config, filepath):
     torch.save(save_info, filepath)
     print(f"save the model to {filepath}")
 
+'''
+If args.balance_sampling == 'over': Oversample from smaller datasets to meet size of largest.
+If args.balance_sampling == 'under': UNdersample from larger datasets to meet size of smallest.
+'''
+def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
+    n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
+    if args.balance_sampling == 'over':
+        n = max(len(sst_train_data), len(para_train_data), len(sts_train_data))
+    sst_train_data = sst_train_data[torch.randperm(0, len(sst_train_data))[:n],:] 
+    para_train_data = para_train_data[torch.randperm(0, len(para_train_data))[:n],:]
+    sts_train_data = sts_train_data[torch.randperm(0, len(sts_train_data))[:n],:]
+    return sst_train_data, para_train_data, sst_train_data
+
+'''
+Cosine similarity loss function for similarity task.
+'''
+def cos_sim_loss(model, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
+    mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
+    cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
+    cos_sim_ids_1 = sts_ids_1[mask,:]
+    cos_sim_ids_2 = sts_ids_2[mask,:]
+    cos_sim_mask_1 = sts_mask_1[mask,:]
+    cos_sim_mask_2 = sts_mask_2[mask,:]
+    cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
+    cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
+    cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
+    return cos_loss
 
 def train_multitask(args):
     '''Train MultitaskBERT.
@@ -196,12 +223,7 @@ def train_multitask(args):
 
     # Filtering out elements in train_data
     if args.balance_sampling != 'none':
-        n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
-        if args.balance_sampling == 'over':
-            n = max(len(sst_train_data), len(para_train_data), len(sts_train_data))
-        sst_train_data = sst_train_data[torch.randperm(0, len(sst_train_data))[:n],:] 
-        para_train_data = para_train_data[torch.randperm(0, len(para_train_data))[:n],:]
-        sts_train_data = sts_train_data[torch.randperm(0, len(sts_train_data))[:n],:]
+        sst_train_data, para_train_data, sts_train_data = balance_sampling(sst_train_data, para_train_data, sts_train_data, args)
 
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
     sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
@@ -244,7 +266,6 @@ def train_multitask(args):
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
-    cosine_loss_fn = nn.CosineEmbeddingLoss()
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
@@ -317,15 +338,7 @@ def train_multitask(args):
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
                 if args.cos_sim_loss != 'n':
-                    mask = torch.where((sts_labels == 0.0) | (sts_labels == 4.0) | (sts_labels == 5.0), True, False)
-                    cos_sim_labels = torch.where(sts_labels[mask] == 0.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
-                    cos_sim_ids_1 = sts_ids_1[mask,:]
-                    cos_sim_ids_2 = sts_ids_2[mask,:]
-                    cos_sim_mask_1 = sts_mask_1[mask,:]
-                    cos_sim_mask_2 = sts_mask_2[mask,:]
-                    cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
-                    cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
-                    cos_loss = cosine_loss_fn(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels)
+                    cos_loss = cos_sim_loss(model, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.cos_sim_loss == 'y':
