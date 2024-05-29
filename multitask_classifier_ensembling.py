@@ -206,14 +206,19 @@ def save_model(model, optimizer, args, config, filepath):
     print(f"save the model to {filepath}")
 
 '''
-If args.balance_sampling != 1: Undersample from para by a factor of args.balance_sampling.
+If args.balance_sampling == 'under': Undersample from larger datasets to meet twice size of smallest.
 '''
 def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
+    n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
 
-    n = int(len(para_train_data)/args.balance_sampling)
-    para_indices = torch.randperm(len(para_train_data))[:n]
+    sst_indices = torch.randperm(len(sst_train_data))[:min(len(sst_train_data), 2*n)]
+    sst_train_data = [sst_train_data[i] for i in sst_indices] 
+
+    para_indices = torch.randperm(len(para_train_data))[:min(len(para_train_data), 2*n)]
     para_train_data = [para_train_data[i] for i in para_indices]
 
+    sts_indices = torch.randperm(len(sts_train_data))[:min(len(sts_train_data), 2*n)]
+    sts_train_data = [sts_train_data[i] for i in sts_indices]
     return sst_train_data, para_train_data, sts_train_data
 
 '''
@@ -247,7 +252,7 @@ def train_multitask(args):
 
 
     # Filtering out elements in train_data
-    if args.balance_sampling != 1:
+    if args.balance_sampling != 'none':
         sst_train_data, para_train_data, sts_train_data = balance_sampling(sst_train_data, para_train_data, sts_train_data, args)
 
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
@@ -284,22 +289,41 @@ def train_multitask(args):
     config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
         args.sst_layers, args.para_layers, args.sts_layers
 
-    model = MultitaskBERT(config)
+    sstModel = MultitaskBERT(config)
+    paraModel = MultitaskBERT(config)
+    stsModel = MultitaskBERT(config)
     
     # Change model to boosted if flag is on
     if args.boosted_bert == "y":
-        model = BoostedBERT(config)
+        sstModel = BoostedBERT(config)
+        paraModel = BoostedBERT(config)
+        stsModel = BoostedBERT(config)
+    
+    sstModel = sstModel.to(device)
+    paraModel = paraModel.to(device)
+    stsModel = stsModel.to(device)
 
+    implementDoraLayer(sstModel)
+    implementDoraLayer(paraModel)
+    implementDoraLayer(stsModel)
 
-    model = model.to(device)
-    implementDoraLayer(model)
+    #model = model.to(device)
+    #implementDoraLayer(model)
     lr = args.lr
-    optimizer = AdamW(model.parameters(), lr=lr)
+    sstOptimizer = AdamW(sstModel.parameters(), lr=lr)
+    paraOptimizer = AdamW(paraModel.parameters(), lr=lr)
+    stsOptimizer = AdamW(stsModel.parameters(), lr=lr)
+
     best_dev_acc = 0
+    stsBestDevAcc = 0
+    paraBestDevAcc = 0
+    sstBestDevAcc = 0
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
-        model.train()
+        sstModel.train()
+        paraModel.train()
+        stsModel.train()
         train_loss = 0
         num_batches = 0
 
@@ -313,12 +337,11 @@ def train_multitask(args):
                 sst_mask = sst_mask.to(device)
                 sst_labels = sst_labels.to(device)
 
-                optimizer.zero_grad()
-                logits = model.predict_sentiment(sst_ids, sst_mask)
-
+                sstOptimizer.zero_grad()
+                logits = sstModel.predict_sentiment(sst_ids, sst_mask)
                 sst_loss = F.cross_entropy(logits, sst_labels.view(-1), reduction='sum') / args.batch_size
                 sst_loss.backward()
-                #optimizer.step()
+                sstOptimizer.step()
 
                 train_loss += sst_loss.item()
                 num_batches += 1
@@ -335,12 +358,12 @@ def train_multitask(args):
                 para_mask_2 = para_mask_2.to(device)
                 para_labels = para_labels.to(device).float()
 
-                optimizer.zero_grad()
-                para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
+                paraOptimizer.zero_grad()
+                para_logits = paraModel.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
                 para_logits = torch.squeeze(para_logits, 1)
                 para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels.view(-1), reduction='sum') / args.batch_size
                 para_loss.backward()
-                #optimizer.step()
+                paraOptimizer.step()
                 train_loss += para_loss.item()
                 num_batches += 1
 
@@ -356,11 +379,11 @@ def train_multitask(args):
                 sts_mask_2 = sts_mask_2.to(device)
                 sts_labels = sts_labels.to(device).float().view(-1)
                 
-                optimizer.zero_grad()
+                stsOptimizer.zero_grad()
 
                 # Normal loss
 
-                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                sts_logits = stsModel.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
             
                 # Trying Cosine Embedding Loss
@@ -368,7 +391,7 @@ def train_multitask(args):
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
                 if args.cos_sim_loss != 'n':
-                    cos_loss = cos_sim_loss(model, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    cos_loss = cos_sim_loss(stsModel, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.cos_sim_loss == 'y':
@@ -392,28 +415,32 @@ def train_multitask(args):
 
 
                 sts_loss.backward()
-                #optimizer.step()
+                stsOptimizer.step()
 
                 train_loss += sts_loss.item()
                 num_batches += 1
-        optimizer.step()
         
         train_loss = train_loss / (num_batches)
     
         sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-        overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
-        if args.task == "sst":
+        #overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
+        if args.task == "sst" or "all":
             overall_dev_acc = sentiment_accuracy
-        elif args.task == "para":
+            if sentiment_accuracy > sstBestDevAcc:
+                sstBestDevAcc = sentiment_accuracy
+                save_model(sstModel, sstOptimizer, args, config, args.filepath)
+        elif args.task == "para" or "all":
             overall_dev_acc = paraphrase_accuracy
-        elif args.task == "sts":
+            if paraphrase_accuracy > paraBestDevAcc:
+                paraBestDevAcc = paraphrase_accuracy
+                save_model(paraModel, paraOptimizer, args, config, args.filepath)
+        elif args.task == "sts" or "all":
             overall_dev_acc = sts_corr
+            if sts_corr > stsBestDevAcc:
+                stsBestDevAcc = sts_corr
+                save_model(stsModel, stsOptimizer, args, config, args.filepath)
 
-        if overall_dev_acc > best_dev_acc:
-            best_dev_acc = overall_dev_acc
-            save_model(model, optimizer, args, config, args.filepath)
-        print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
-
+        print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
 
 def test_multitask(args):
     '''Test and save predictions on the dev and test sets of all three tasks.'''
@@ -589,9 +616,10 @@ def get_args():
                         choices=('y', 'n', 'h'),
                         default = 'n')
     # 4. Balance sampling
-    parser.add_argument("--balance_sampling", type=int,
-                        help='under: undersample high-example tasks by factor of balance_sampling',
-                        default = 1)
+    parser.add_argument("--balance_sampling", type=str,
+                        help='under: undersample high-example tasks to balance number of examples for each, over: oversample low-example tasks to balance number of examples for each',
+                        choices=('under', 'none'),
+                        default = 'under')
     
     # 5. Boosted bert
     parser.add_argument("--boosted_bert", type=str,

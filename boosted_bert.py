@@ -14,6 +14,11 @@ BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 DROPOUT_PROB = 0.1
 
+NUM_TASKS = 3
+SST = 0
+PARA = 1
+STS = 2
+
 # Fix the random seed.
 def seed_everything(seed=11711):
     random.seed(seed)
@@ -27,20 +32,20 @@ def seed_everything(seed=11711):
 class BoostedBERT(nn.Module):
     def __init__(self, config):
         super(BoostedBERT, self).__init__()
-        self.n = 3
+        self.n = NUM_TASKS
         self.models = [MultitaskBERT(config) for i in range(self.n)]
 
     def forward(self, input_ids, attention_mask):
         return torch.sum([m(input_ids, attention_mask) for m in self.models]) / self.n
 
     def predict_sentiment(self, input_ids, attention_mask):
-        return torch.sum([m.predict_sentiment(input_ids, attention_mask) for m in self.models]) / self.n
+        return self.models[SST].predict_sentiment(input_ids, attention_mask)
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        return torch.sum([m.predict_paraphrase(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2) for m in self.models]) / self.n
+        return self.models[PARA].predict_paraphrase(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        return torch.sum([m.predict_paraphrase(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2) for m in self.models]) / self.n
+        return self.models[STS].predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
     
     def multiple_negatives_ranking_loss(self, embeddings, batch_size):
         similarity_matrix = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=-1)
