@@ -185,13 +185,13 @@ def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
     n = min(len(sst_train_data), len(para_train_data), len(sts_train_data))
 
     sst_indices = torch.randperm(len(sst_train_data))[:min(len(sst_train_data), 2*n)]
-    sst_train_data = sst_train_data[sst_indices,:] 
+    sst_train_data = [sst_train_data[i] for i in sst_indices] 
 
     para_indices = torch.randperm(len(para_train_data))[:min(len(para_train_data), 2*n)]
-    para_train_data = para_train_data[para_indices,:]
+    para_train_data = [para_train_data[i] for i in para_indices]
 
     sts_indices = torch.randperm(len(sts_train_data))[:min(len(sts_train_data), 2*n)]
-    sts_train_data = sts_train_data[sts_indices,:]
+    sts_train_data = [sts_train_data[i] for i in sts_indices]
     return sst_train_data, para_train_data, sst_train_data
 
 '''
