@@ -36,7 +36,7 @@ from datasets import (
 
 from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_sst, model_eval_test_para, model_eval_test_sts
 
-from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
+from manatEvaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
 
 #dimIn = k
@@ -351,10 +351,13 @@ def train_multitask(args):
                 train_loss_para += para_loss.item()
                 num_batches += 1
             train_loss_para = train_loss_para / (num_batches)
+            print("Train Loss Paraphrase:: ", train_loss_para)
 
     if args.task == "all" or args.task == "sts":
         for epoch in range(args.epochs):
             # Train similarity
+            stsModel.train()
+            train_loss_sts = 0
             for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = similarity"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
                                                                             sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
@@ -399,10 +402,11 @@ def train_multitask(args):
 
                 sts_loss.backward()
                 stsOptimizer.step()
-
                 train_loss_sts += sts_loss.item()
                 num_batches += 1
             train_loss_sts = train_loss_sts / (num_batches)
+            print("Train Loss STS:: ", train_loss_sts)
+
     if args.task == "all" or args.task == "sst":
         for epoch in range(args.epochs):
             sstModel.train()
@@ -425,8 +429,7 @@ def train_multitask(args):
                 train_loss_sst += sst_loss.item()
                 num_batches += 1
             train_loss_sst = train_loss_sst / (num_batches)
-
-    
+            print("Train Loss SST:: ", train_loss_sst)
 
     
     sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device)
@@ -446,6 +449,7 @@ def train_multitask(args):
     if sentiment_accuracy > sstBestDevAcc:
             sstBestDevAcc = sentiment_accuracy
             save_model(sstModel, sstOptimizer, args, config, args.filepath)
+
 
     print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
 
