@@ -36,7 +36,7 @@ from datasets import (
 
 from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_sst, model_eval_test_para, model_eval_test_sts
 
-from manatEvaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
+from manatEvaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask, model_eval_test_sts
 
 
 #dimIn = k
@@ -414,13 +414,16 @@ def train_multitask(args):
             print("Train Loss STS: ", sts_train_loss)
     
     
-        sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device)
+        
         if args.task == "sst":
             overall_dev_acc = sentiment_accuracy
         elif args.task == "para":
             overall_dev_acc = paraphrase_accuracy
         elif args.task == "sts":
             overall_dev_acc = sts_corr
+            sentiment_accuracy = model_eval_test_sts(sts_dev_dataloader, stsModel, device)
+        else:
+            sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device)
 
         if sts_corr > stsBestDevAcc:
             stsBestDevAcc = sts_corr
