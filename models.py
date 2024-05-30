@@ -33,6 +33,8 @@ def seed_everything(seed=11711):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
+'''
+Ensemble of three BERT models, each responsible for one task.'''
 class BoostedBERT(nn.Module):
     def __init__(self, config):
         super(BoostedBERT, self).__init__()
@@ -51,12 +53,22 @@ class BoostedBERT(nn.Module):
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         return self.models[STS].predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
     
-    def multiple_negatives_ranking_loss(self, embeddings, batch_size):
-        similarity_matrix = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=-1)
-        labels = torch.arange(batch_size).to(similarity_matrix.device)
-        loss = F.cross_entropy(similarity_matrix, labels)
-        return loss
+    def cosine_similarity_fine_tuning(self, output1, output2):
+        return self.models[STS].cosine_similarity_fine_tuning(self, output1, output2)
 
+'''
+Multitask BERT class, starter training code, evaluation, and test code.
+
+Of note are:
+* class MultitaskBERT: Your implementation of multitask BERT.
+* function train_multitask: Training procedure for MultitaskBERT. Starter code
+    copies training procedure from `classifier.py` (single-task SST).
+* function test_multitask: Test procedure for MultitaskBERT. This function generates
+    the required files for submission.
+
+Running `python multitask_classifier.py` trains and tests your MultitaskBERT and
+writes all required submission files.
+'''
 class MultitaskBERT(nn.Module):
     def __init__(self, config):
         super(MultitaskBERT, self).__init__()
