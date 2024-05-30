@@ -115,7 +115,7 @@ class MultitaskBERT(nn.Module):
         self.sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
         self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_para_layers - 1)])
         self.para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
-        self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE, relu=True) for _ in range(config.num_sts_layers - 1)])
+        self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 1)])
         self.sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
 
     def forward(self, input_ids, attention_mask):
@@ -566,15 +566,15 @@ def get_args():
     parser.add_argument("--task", type=str, default = "all")
     # FLAGS for testing different models
 
-    # 1a. Set num layers for each task
+    # 1a. Set num linear layers for sst
     parser.add_argument("--sst_layers", type=int,
-                        default = 2)
+                        default = 4)
     
-    # 1b. Set num layers for each task
+    # 1b. Set num linear layers for para
     parser.add_argument("--para_layers", type=int,
                         default= 2)
     
-    # 1c. Set num layers for each task
+    # 1c. Set num linear layers for sts
     parser.add_argument("--sts_layers", type = int,
                         default = 2)
     
