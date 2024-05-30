@@ -157,6 +157,11 @@ class MultitaskBERT(nn.Module):
         output_agr = self.sts_layers[-1](embeds, activation=False)
         return output_agr
 
+    #incorrect implementtauin of multiple_negative_ranking_loss
+    #because we opted for contrastive learning, I have not bothered to fix this
+    #however, if someone wants to fix this, we can ensemble or create a joint loss function
+    #e.g LOSS = alpha*Multiple_Loss + beta*Contrastive_Loss
+    #could be an intresting contribution as I don't think a semi-supervised model exists yet
     def multiple_negatives_ranking_loss(self, query_embeds, doc_embeds):
         """
         Multiple Negatives Ranking Loss
