@@ -421,7 +421,7 @@ def train_multitask(args):
             overall_dev_acc = paraphrase_accuracy
         elif args.task == "sts":
             overall_dev_acc = sts_corr
-            sentiment_accuracy = model_eval_test_sts(sts_dev_dataloader, stsModel, device)
+            sentiment_accuracy = model_eval_test_sts(sts_dev_dataloader, stsModel, device=device)
         else:
             sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device)
 
