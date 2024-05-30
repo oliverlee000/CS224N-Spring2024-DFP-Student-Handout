@@ -284,18 +284,17 @@ def train_multitask(args):
     config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
         args.sst_layers, args.para_layers, args.sts_layers
 
-    sstModel = MultitaskBERT(config)
-    paraModel = MultitaskBERT(config)
-    stsModel = MultitaskBERT(config)
-
+    sstModel = MultitaskBERT(config).to(device)
+    paraModel = MultitaskBERT(config).to(device)
+    stsModel = MultitaskBERT(config).to(device)
     
 
 
     #implementDoraLayer(model)
     lr = args.lr
-    sstOptimizer = AdamW(sstModel.parameters(), lr=lr)
-    paraOptimizer = AdamW(paraModel.parameters(), lr=lr)
-    stsOptimizer = AdamW(stsModel.parameters(), lr=lr)
+    sstOptimizer = AdamW(sstModel.parameters(), lr=lr).to(device)
+    paraOptimizer = AdamW(paraModel.parameters(), lr=lr).to(device)
+    stsOptimizer = AdamW(stsModel.parameters(), lr=lr).to(device)
     best_dev_acc = 0
 
     sstBestDevAcc = 0
@@ -427,7 +426,7 @@ def train_multitask(args):
         if sentiment_accuracy > sstBestDevAcc:
             sstBestDevAcc = sentiment_accuracy
             save_model(sstModel, sstOptimizer, args, config, args.filepath)
-        print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
+    print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
 
 
 def test_multitask(args):
