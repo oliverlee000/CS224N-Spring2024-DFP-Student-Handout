@@ -326,6 +326,8 @@ def train_multitask(args):
 
                 sst_train_loss += sst_loss.item()
                 num_batches += 1
+            sst_train_loss = sst_train_loss / num_batches
+            print("Train Loss SST: ", sst_train_loss)
 
     if args.task == "all" or args.task == "para":
         paraModel.train()
@@ -342,19 +344,21 @@ def train_multitask(args):
                 para_mask_2 = para_mask_2.to(device)
                 para_labels = para_labels.to(device).float()
 
-                sstOptimizer.zero_grad()
-                para_logits = sstOptimizer.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
+                paraOptimizer.zero_grad()
+                para_logits = paraModel.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
                 para_logits = torch.squeeze(para_logits, 1)
                 para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels.view(-1), reduction='sum') / args.batch_size
                 para_loss.backward()
-                sstOptimizer.step()
-                sst_train_loss += para_loss.item()
+                paraOptimizer.step()
+                para_train_loss += para_loss.item()
                 num_batches += 1
+            para_train_loss = para_train_loss / num_batches
+            print("Train Loss Para: ", para_train_loss)
 
     if args.task == "all" or args.task == "sts":
         # Train similarity
-        sstModel.train()
-        sst_train_loss = 0
+        stsModel.train()
+        sts_train_loss = 0
         num_batches = 0
         for epoch in range(args.epochs):
             for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = similarity"):
@@ -371,7 +375,7 @@ def train_multitask(args):
 
                 # Normal loss
 
-                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                sts_logits = stsModel.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
             
                 # Trying Cosine Embedding Loss
@@ -379,7 +383,7 @@ def train_multitask(args):
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
                 if args.cos_sim_loss != 'n':
-                    cos_loss = cos_sim_loss(model, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    cos_loss = cos_sim_loss(stsModel, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.cos_sim_loss == 'y':
@@ -402,11 +406,12 @@ def train_multitask(args):
                         sts_loss += mnr_loss
 
 
-            sts_loss.backward()
-            stsOptimizer.step()
-
-            train_loss += sts_loss.item()
-            num_batches += 1
+                sts_loss.backward()
+                stsOptimizer.step()
+                sts_train_loss += sts_loss.item()
+                num_batches += 1
+            sts_train_loss = sts_train_loss / num_batches
+            print("Train Loss STS: ", sts_train_loss)
     
     
         sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device)
@@ -419,26 +424,39 @@ def train_multitask(args):
 
         if sts_corr > stsBestDevAcc:
             stsBestDevAcc = sts_corr
-            save_model(stsModel, stsOptimizer, args, config, args.filepath)
+            save_model(stsModel, stsOptimizer, args, config, args.filepathSTS)
         if paraphrase_accuracy > paraBestDevAcc:
             paraBestDevAcc = paraphrase_accuracy
-            save_model(paraModel, paraOptimizer, args, config, args.filepath)
+            save_model(paraModel, paraOptimizer, args, config, args.filepathPara)
         if sentiment_accuracy > sstBestDevAcc:
             sstBestDevAcc = sentiment_accuracy
-            save_model(sstModel, sstOptimizer, args, config, args.filepath)
-    print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
+            save_model(sstModel, sstOptimizer, args, config, args.filepathSST)
+    print("SST Accuracy: ", sentiment_accuracy, "Para Accuracy: ", paraphrase_accuracy, "STS Correlation: ", sts_corr)
+    #print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
 
 
 def test_multitask(args):
     '''Test and save predictions on the dev and test sets of all three tasks.'''
     with torch.no_grad():
         device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
-        saved = torch.load(args.filepath)
-        config = saved['model_config']
+        sstSaved = torch.load(args.filepathSST)
+        config = sstSaved['model_config']
+        sstModel = MultitaskBERT(config)
+        sstModel.load_state_dict(sstSaved['model'])
+        sstModel = sstModel.to(device)
 
-        model = MultitaskBERT(config)
-        model.load_state_dict(saved['model'])
-        model = model.to(device)
+        paraSaved = torch.load(args.filepathPara)
+        config = paraSaved['model_config']
+        paraModel = MultitaskBERT(config)
+        paraModel.load_state_dict(paraSaved['model'])
+        paraModel = paraModel.to(device)
+
+        stsSaved = torch.load(args.filepathSTS)
+        config = stsSaved['model_config']
+        stsModel = MultitaskBERT(config)
+        stsModel.load_state_dict(stsSaved['model'])
+        stsModel = stsModel.to(device)
+
         print(f"Loaded model to test from {args.filepath}")
 
         sst_test_data, num_labels,para_test_data, sts_test_data = \
@@ -476,13 +494,13 @@ def test_multitask(args):
                 dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids, \
                 dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_multitask(sst_dev_dataloader,
                                                                         para_dev_dataloader,
-                                                                        sts_dev_dataloader, model, device)
+                                                                        sts_dev_dataloader, sstModel, paraModel, stsModel, device)
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_multitask(sst_test_dataloader,
                                             para_test_dataloader,
-                                            sts_test_dataloader, model, device)
+                                            sts_test_dataloader, sstModel, paraModel, stsModel, device)
 
             with open(args.sst_dev_out, "w+") as f:
                 print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
@@ -518,13 +536,13 @@ def test_multitask(args):
                     f.write(f"{p} , {s} \n")
         elif args.task == "sst":
             dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
-                                                                        model, device)
+                                                                        sstModel, device)
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_sst(sst_test_dataloader,
                                             para_test_dataloader,
-                                            sts_test_dataloader, model, device)
+                                            sts_test_dataloader, sstModel, device)
 
             with open(args.sst_dev_out, "w+") as f:
                 print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
@@ -537,13 +555,13 @@ def test_multitask(args):
                     f.write(f"{p} , {s} \n")
         elif args.task == "para":
             dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids \
-                = model_eval_para(para_dev_dataloader, model, device)
+                = model_eval_para(para_dev_dataloader, paraModel, device)
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_para(sst_test_dataloader,
                                             para_test_dataloader,
-                                            sts_test_dataloader, model, device)
+                                            sts_test_dataloader, paraModel, device)
 
             with open(args.para_dev_out, "w+") as f:
                 print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
@@ -558,10 +576,10 @@ def test_multitask(args):
         else:
             dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_sts(sst_dev_dataloader,
                                                                         para_dev_dataloader,
-                                                                        sts_dev_dataloader, model, device)
+                                                                        sts_dev_dataloader, stsModel, device)
 
             test_sts_y_pred, test_sts_sent_ids = \
-                    model_eval_test_sts(sts_test_dataloader, model, device)
+                    model_eval_test_sts(sts_test_dataloader, stsModel, device)
 
             with open(args.sts_dev_out, "w+") as f:
                 print(f"dev sts corr :: {dev_sts_corr :.3f}")
@@ -643,6 +661,10 @@ def get_args():
     parser.add_argument("--batch_size", help='sst: 64, cfimdb: 8 can fit a 12GB GPU', type=int, default=8)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
     parser.add_argument("--lr", type=float, help="learning rate", default=1e-5)
+
+    parser.add_argument("--filepathSST", type=str, default="sst.pt")
+    parser.add_argument("--filepathPara", type=str, default="para.pt")
+    parser.add_argument("--filepathSTS", type=str, default="sts.pt")
 
     args = parser.parse_args()
     return args
