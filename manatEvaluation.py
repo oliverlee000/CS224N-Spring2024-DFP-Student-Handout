@@ -119,7 +119,7 @@ def model_eval_multitask(sentiment_dataloader,
                          sst_model,
                          para_model,
                          sts_model,
-                         model, device):
+                        device):
     sst_model.eval()  # Switch to eval model, will turn off randomness like dropout.
     para_model.eval()
     sts_model.eval()
@@ -213,7 +213,7 @@ def model_eval_test_multitask(sentiment_dataloader,
                          sst_model,
                          para_model,
                          sts_model,
-                         model, device):
+                        device):
     sst_model.eval()  # Switch to eval model, will turn off randomness like dropout.
     para_model.eval()  # Switch to eval model, will turn off randomness like dropout.
     sts_model.eval()  # Switch to eval model, will turn off randomness like dropout.
