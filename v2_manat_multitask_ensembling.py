@@ -422,7 +422,7 @@ def train_multitask(args):
         elif args.task == "sts":
             sentiment_accuracy = model_eval_test_sts(sts_dev_dataloader, stsModel, device=device)
         else:
-            sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device)
+            sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device=device)
 
         if sentiment_accuracy > stsBestDevAcc:
             #stsBestDevAcc = sts_corr
@@ -497,13 +497,13 @@ def test_multitask(args):
                 dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids, \
                 dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_multitask(sst_dev_dataloader,
                                                                         para_dev_dataloader,
-                                                                        sts_dev_dataloader, sstModel, paraModel, stsModel, device)
+                                                                        sts_dev_dataloader, sstModel, paraModel, stsModel, device=device)
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_multitask(sst_test_dataloader,
                                             para_test_dataloader,
-                                            sts_test_dataloader, sstModel, paraModel, stsModel, device)
+                                            sts_test_dataloader, sstModel, paraModel, stsModel, device=device)
 
             with open(args.sst_dev_out, "w+") as f:
                 print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
@@ -539,13 +539,13 @@ def test_multitask(args):
                     f.write(f"{p} , {s} \n")
         elif args.task == "sst":
             dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
-                                                                        sstModel, device)
+                                                                        sstModel, device=device)
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_sst(sst_test_dataloader,
                                             para_test_dataloader,
-                                            sts_test_dataloader, sstModel, device)
+                                            sts_test_dataloader, sstModel, device=device)
 
             with open(args.sst_dev_out, "w+") as f:
                 print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
@@ -558,13 +558,13 @@ def test_multitask(args):
                     f.write(f"{p} , {s} \n")
         elif args.task == "para":
             dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids \
-                = model_eval_para(para_dev_dataloader, paraModel, device)
+                = model_eval_para(para_dev_dataloader, paraModel, device=device)
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_para(sst_test_dataloader,
                                             para_test_dataloader,
-                                            sts_test_dataloader, paraModel, device)
+                                            sts_test_dataloader, paraModel, device=device)
 
             with open(args.para_dev_out, "w+") as f:
                 print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
