@@ -434,7 +434,7 @@ def train_multitask(args):
             sstBestDevAcc = sentiment_accuracy
             save_model(sstModel, sstOptimizer, args, config, args.filepathSST)
     print("SST Accuracy: ", sentiment_accuracy, "Para Accuracy: ", paraphrase_accuracy, "STS Correlation: ", sts_corr)
-    print(f"sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
+    print(f"sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}")
 
 
 def test_multitask(args):
