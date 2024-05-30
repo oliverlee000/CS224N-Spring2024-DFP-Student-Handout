@@ -566,15 +566,15 @@ def get_args():
     parser.add_argument("--task", type=str, default = "all")
     # FLAGS for testing different models
 
-    # 1a. Set num layers for each task
+    # 1a. Set num linear layers for sst
     parser.add_argument("--sst_layers", type=int,
-                        default = 2)
+                        default = 4)
     
-    # 1b. Set num layers for each task
+    # 1b. Set num linear layers for para
     parser.add_argument("--para_layers", type=int,
                         default= 2)
     
-    # 1c. Set num layers for each task
+    # 1c. Set num linear layers for sts
     parser.add_argument("--sts_layers", type = int,
                         default = 2)
     
