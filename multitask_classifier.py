@@ -159,7 +159,6 @@ class MultitaskBERT(nn.Module):
         for i, layer_module in enumerate(self.para_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
         output_agr = self.para_layers[-1](embeds, activation=False)
-        print(output_agr)
         return output_agr
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
