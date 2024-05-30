@@ -129,7 +129,7 @@ class MultitaskBERT(nn.Module):
         
         if config.num_sts_layers > 1:
             self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE)])
-            self.sts_layers.extend([FF(2*LINEAR_LAYER_HIDDEN_SIZE, 2*LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sts_layers -21)])
+            self.sts_layers.extend([FF(2*LINEAR_LAYER_HIDDEN_SIZE, 2*LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 2)])
             self.sts_layers.append(FF(2*LINEAR_LAYER_HIDDEN_SIZE, 1))
         else:
             self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 1)])
