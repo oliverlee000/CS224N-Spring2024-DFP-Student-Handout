@@ -10,6 +10,8 @@ from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
 
+TQDM_DISABLE=False
+
 # Evaluate multitask model on paraphrase only.
 def model_eval_para(paraphrase_dataloader, model, device):
     with torch.no_grad():

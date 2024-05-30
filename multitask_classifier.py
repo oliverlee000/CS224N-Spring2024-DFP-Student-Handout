@@ -99,8 +99,11 @@ def seed_everything(seed=11711):
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
-DROPOUT_PROB = 0.1
-LINEAR_LAYER_HIDDEN_SIZE = 30
+
+# Dropout probabilities
+INPUT_DROP = 0.1
+HIDDEN_DROP = 0.4
+OUTPUT_DROP = 0.0
 
 class MultitaskBERT(nn.Module):
     def __init__(self, config):
@@ -113,27 +116,28 @@ class MultitaskBERT(nn.Module):
             elif config.fine_tune_mode == 'full-model':
                 param.requires_grad = True
         
+        hidden_size = config.hidden_size
         sst_layers, para_layers, sts_layers = nn.ModuleList(), nn.ModuleList(), nn.ModuleList()
         if config.num_sst_layers > 1:
-            sst_layers.append(FF(BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE))
-            sst_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sst_layers - 2)])
-            sst_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
+            sst_layers.append(FF(BERT_HIDDEN_SIZE, hidden_size, INPUT_DROP))
+            sst_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_sst_layers - 2)])
+            sst_layers.append(FF(hidden_size, N_SENTIMENT_CLASSES))
         else:
             sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
 
         if config.num_para_layers > 1:
-            para_layers.append(FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE))
-            para_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_para_layers - 2)])
-            para_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, 1))
+            para_layers.append(FF(2*BERT_HIDDEN_SIZE, hidden_size, INPUT_DROP))
+            para_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_para_layers - 2)])
+            para_layers.append(FF(hidden_size, 1))
         else:
-            para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
+            para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP))
         
         if config.num_sts_layers > 1:
-            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE))
-            sts_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 2)])
-            sts_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, 1))
+            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, hidden_size, INPUT_DROP))
+            sts_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_sts_layers - 2)])
+            sts_layers.append(FF(hidden_size, 1, OUTPUT_DROP))
         else:
-            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1) for _ in range(1))
+            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP) for _ in range(1))
         self.sst_layers, self.para_layers, self.sts_layers = sst_layers, para_layers, sts_layers
 
     def forward(self, input_ids, attention_mask):
@@ -151,12 +155,11 @@ class MultitaskBERT(nn.Module):
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         output1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
         output2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
-        if len(self.para_layers) == 0:
-            return torch.dot(output1, output2)
         embeds = torch.cat((output1, output2), 1)
         for i, layer_module in enumerate(self.para_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
         output_agr = self.para_layers[-1](embeds, activation=False)
+        print(output_agr)
         return output_agr
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
@@ -182,10 +185,10 @@ class MultitaskBERT(nn.Module):
 Consists exclusively of a feed forward layer
 '''
 class FF(nn.Module):
-    def __init__(self, hidden_size, output_size, relu=False):
+    def __init__(self, hidden_size, output_size, dropout_prob=HIDDEN_DROP, relu=False):
         super().__init__()
         # Feed forward.
-        self.dropout = nn.Dropout(DROPOUT_PROB)
+        self.dropout = nn.Dropout(dropout_prob)
         self.dense = nn.Linear(hidden_size, output_size)
         self.af = F.gelu
         if relu:
@@ -301,6 +304,8 @@ def train_multitask(args):
     # Set layers for each task
     config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
         args.sst_layers, args.para_layers, args.sts_layers
+    
+    config.hidden_size = args.hidden_size
 
     model = MultitaskBERT(config)
     #print(model.parameters())
@@ -311,7 +316,7 @@ def train_multitask(args):
 
 
     model = model.to(device)
-    implementDoraLayer(model)
+    #implementDoraLayer(model)
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
@@ -336,8 +341,9 @@ def train_multitask(args):
                 logits = model.predict_sentiment(sst_ids, sst_mask)
 
                 sst_loss = F.cross_entropy(logits, sst_labels.view(-1), reduction='sum') / args.batch_size
+                
                 sst_loss.backward()
-                #optimizer.step()
+                optimizer.step()
 
                 train_loss += sst_loss.item()
                 num_batches += 1
@@ -358,8 +364,9 @@ def train_multitask(args):
                 para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
                 para_logits = torch.squeeze(para_logits, 1)
                 para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels.view(-1), reduction='sum') / args.batch_size
+                
                 para_loss.backward()
-                #optimizer.step()
+                optimizer.step()
                 train_loss += para_loss.item()
                 num_batches += 1
 
@@ -380,7 +387,7 @@ def train_multitask(args):
                 # Normal loss
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='mean')
+                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
             
                 # Trying Cosine Embedding Loss
 
@@ -391,7 +398,7 @@ def train_multitask(args):
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.cos_sim_loss == 'y':
-                        sts_loss += cos_loss.item()
+                        sts_loss += cos_loss
 
                 # Integrate Multiple Negatives Ranking Loss
                 if args.neg_ranking_loss != 'n':
@@ -405,15 +412,14 @@ def train_multitask(args):
                     if args.neg_ranking_loss == 'y':
                         sts_loss = mnr_loss
                     else:
-                        sts_loss += mnr_loss.item()
+                        sts_loss += mnr_loss
 
 
                 sts_loss.backward()
-                #optimizer.step()
+                optimizer.step()
 
                 train_loss += sts_loss.item()
                 num_batches += 1
-        optimizer.step()
         
         train_loss = train_loss / (num_batches)
         overall_dev_acc = 0
@@ -618,6 +624,10 @@ def get_args():
     parser.add_argument("--boosted_bert", type=str,
                         choices=('y', 'n'),
                         default = 'n')
+    
+    # 6. Hidden size for linear layers
+    parser.add_argument("--hidden_size", type=int,
+                        default = 300)
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
