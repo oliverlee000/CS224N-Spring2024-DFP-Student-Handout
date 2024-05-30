@@ -100,6 +100,7 @@ def seed_everything(seed=11711):
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 DROPOUT_PROB = 0.1
+LINEAR_LAYER_HIDDEN_SIZE = 100
 
 class MultitaskBERT(nn.Module):
     def __init__(self, config):
@@ -111,12 +112,27 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = False
             elif config.fine_tune_mode == 'full-model':
                 param.requires_grad = True
-        self.sst_layers = nn.ModuleList([FF(BERT_HIDDEN_SIZE, BERT_HIDDEN_SIZE) for _ in range(config.num_sst_layers - 1)])
-        self.sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
-        self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_para_layers - 1)])
-        self.para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
-        self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 2*BERT_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 1)])
-        self.sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
+        
+        if config.num_sst_layers > 1:
+            self.sst_layers = nn.ModuleList([FF(BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE)])
+            self.sst_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sst_layers - 2)])
+            self.sst_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
+        else:
+            self.sst_layers = nn.ModuleList([FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)])
+
+        if config.num_para_layers > 1:
+            self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE)])
+            self.para_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_para_layers - 2)])
+            self.para_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, 1))
+        else:
+            self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 1)])
+        
+        if config.num_sts_layers > 1:
+            self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE)])
+            self.sts_layers.extend([FF(2*LINEAR_LAYER_HIDDEN_SIZE, 2*LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sts_layers -21)])
+            self.sts_layers.append(FF(2*LINEAR_LAYER_HIDDEN_SIZE, 1))
+        else:
+            self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 1)])
 
     def forward(self, input_ids, attention_mask):
         output = self.bert(input_ids, attention_mask)
