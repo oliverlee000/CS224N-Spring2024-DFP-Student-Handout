@@ -34,7 +34,6 @@ class BoostedBERT(nn.Module):
         super(BoostedBERT, self).__init__()
         self.n = NUM_TASKS
         self.models = nn.ModuleList([MultitaskBERT(config) for _ in range(NUM_TASKS)])
-        print(self.models[0].parameters())
 
     def forward(self, input_ids, attention_mask):
         return torch.sum([m(input_ids, attention_mask) for m in self.models]) / self.n

@@ -100,7 +100,7 @@ def seed_everything(seed=11711):
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
 DROPOUT_PROB = 0.1
-LINEAR_LAYER_HIDDEN_SIZE = 100
+LINEAR_LAYER_HIDDEN_SIZE = 30
 
 class MultitaskBERT(nn.Module):
     def __init__(self, config):
@@ -113,26 +113,28 @@ class MultitaskBERT(nn.Module):
             elif config.fine_tune_mode == 'full-model':
                 param.requires_grad = True
         
+        sst_layers, para_layers, sts_layers = nn.ModuleList(), nn.ModuleList(), nn.ModuleList()
         if config.num_sst_layers > 1:
-            self.sst_layers = nn.ModuleList([FF(BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE)])
-            self.sst_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sst_layers - 2)])
-            self.sst_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
+            sst_layers.append(FF(BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE))
+            sst_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sst_layers - 2)])
+            sst_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
         else:
-            self.sst_layers = nn.ModuleList([FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES)])
+            sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
 
         if config.num_para_layers > 1:
-            self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE)])
-            self.para_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_para_layers - 2)])
-            self.para_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, 1))
+            para_layers.append(FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE))
+            para_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_para_layers - 2)])
+            para_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, 1))
         else:
-            self.para_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 1)])
+            para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1))
         
         if config.num_sts_layers > 1:
-            self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE)])
-            self.sts_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 2)])
-            self.sts_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, 1))
+            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE))
+            sts_layers.extend([FF(LINEAR_LAYER_HIDDEN_SIZE, LINEAR_LAYER_HIDDEN_SIZE) for _ in range(config.num_sts_layers - 2)])
+            sts_layers.append(FF(LINEAR_LAYER_HIDDEN_SIZE, 1))
         else:
-            self.sts_layers = nn.ModuleList([FF(2*BERT_HIDDEN_SIZE, 1)])
+            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1) for _ in range(1))
+        self.sst_layers, self.para_layers, self.sts_layers = sst_layers, para_layers, sts_layers
 
     def forward(self, input_ids, attention_mask):
         output = self.bert(input_ids, attention_mask)
@@ -414,15 +416,19 @@ def train_multitask(args):
         optimizer.step()
         
         train_loss = train_loss / (num_batches)
-    
-        sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-        overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
+        overall_dev_acc = 0
         if args.task == "sst":
+            sentiment_accuracy, _, _, _, _, _ = model_eval_sst(sst_dev_dataloader, model, device)
             overall_dev_acc = sentiment_accuracy
         elif args.task == "para":
+            paraphrase_accuracy, _, _ = model_eval_para(para_dev_dataloader, model, device)
             overall_dev_acc = paraphrase_accuracy
         elif args.task == "sts":
+            sts_corr, _, _ = model_eval_sts(sts_dev_dataloader, model, device)
             overall_dev_acc = sts_corr
+        else:
+            sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+            overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
 
         if overall_dev_acc > best_dev_acc:
             best_dev_acc = overall_dev_acc

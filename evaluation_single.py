@@ -1,3 +1,15 @@
+import random, numpy as np, argparse
+from types import SimpleNamespace
+
+import torch
+from torch import nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+
+from bert import BertModel
+from optimizer import AdamW
+from tqdm import tqdm
+
 # Evaluate multitask model on paraphrase only.
 def model_eval_para(paraphrase_dataloader, model, device):
     with torch.no_grad():
