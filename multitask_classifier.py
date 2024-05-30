@@ -373,9 +373,7 @@ def train_multitask(args):
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.cos_sim_loss == 'y':
-                        sts_loss = cos_loss
-                    else:
-                        sts_loss += cos_loss
+                        sts_loss += cos_loss.item()
 
                 # Integrate Multiple Negatives Ranking Loss
                 if args.neg_ranking_loss != 'n':
@@ -389,7 +387,7 @@ def train_multitask(args):
                     if args.neg_ranking_loss == 'y':
                         sts_loss = mnr_loss
                     else:
-                        sts_loss += mnr_loss
+                        sts_loss += mnr_loss.item()
 
 
                 sts_loss.backward()
@@ -583,7 +581,7 @@ def get_args():
 
     # 2. Set cosine similarity loss for similarity task
     parser.add_argument("--cos_sim_loss", type=str,
-                        choices=('y', 'n', 'h'),
+                        choices=('y', 'n'),
                         default = 'n')
     # 3. Set neg ranking loss for similarity task
     parser.add_argument("--neg_ranking_loss", type=str,
