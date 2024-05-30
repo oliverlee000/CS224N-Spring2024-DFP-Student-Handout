@@ -424,7 +424,6 @@ def train_multitask(args):
         else:
             sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, sstModel, paraModel, stsModel, device)
 
-        print(sentiment_accuracy)
         if sentiment_accuracy > stsBestDevAcc:
             #stsBestDevAcc = sts_corr
             save_model(stsModel, stsOptimizer, args, config, args.filepathSTS)
@@ -435,8 +434,8 @@ def train_multitask(args):
         if sentiment_accuracy > sstBestDevAcc:
             sstBestDevAcc = sentiment_accuracy
             save_model(sstModel, sstOptimizer, args, config, args.filepathSST)
-    #print("SST Accuracy: ", sentiment_accuracy, "Para Accuracy: ", paraphrase_accuracy, "STS Correlation: ", sts_corr)
-    #print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
+    print("SST Accuracy: ", sentiment_accuracy, "Para Accuracy: ", paraphrase_accuracy, "STS Correlation: ", sts_corr)
+    print(f"sst acc :: {sentiment_accuracy :.3f}, para acc :: {paraphrase_accuracy :.3f}, sts corr :: {sts_corr :.3f}, overall dev acc :: {overall_dev_acc :.3f}")
 
 
 def test_multitask(args):
