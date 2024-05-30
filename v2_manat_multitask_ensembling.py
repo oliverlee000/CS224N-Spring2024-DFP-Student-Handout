@@ -292,9 +292,9 @@ def train_multitask(args):
 
     #implementDoraLayer(model)
     lr = args.lr
-    sstOptimizer = AdamW(sstModel.parameters(), lr=lr).to(device)
-    paraOptimizer = AdamW(paraModel.parameters(), lr=lr).to(device)
-    stsOptimizer = AdamW(stsModel.parameters(), lr=lr).to(device)
+    sstOptimizer = AdamW(sstModel.parameters(), lr=lr)
+    paraOptimizer = AdamW(paraModel.parameters(), lr=lr)
+    stsOptimizer = AdamW(stsModel.parameters(), lr=lr)
     best_dev_acc = 0
 
     sstBestDevAcc = 0
