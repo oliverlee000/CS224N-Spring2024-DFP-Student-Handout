@@ -362,7 +362,7 @@ def train_multitask(args):
                 # Normal loss
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
+                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='mean')
             
                 # Trying Cosine Embedding Loss
 
