@@ -110,26 +110,27 @@ class MultitaskBERT(nn.Module):
             elif config.fine_tune_mode == 'full-model':
                 param.requires_grad = True
         
-        hidden_size = config.hidden_size
+        hidden_size_sst, hidden_size_para, hidden_size_sts = \
+            config.hidden_size_sst, config.hidden_size_para, config.hidden_size_sts
         sst_layers, para_layers, sts_layers = nn.ModuleList(), nn.ModuleList(), nn.ModuleList()
         if config.num_sst_layers > 1:
-            sst_layers.append(FF(BERT_HIDDEN_SIZE, hidden_size, INPUT_DROP))
-            sst_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_sst_layers - 2)])
-            sst_layers.append(FF(hidden_size, N_SENTIMENT_CLASSES, OUTPUT_DROP))
+            sst_layers.append(FF(BERT_HIDDEN_SIZE, hidden_size_sst, INPUT_DROP))
+            sst_layers.extend([FF(hidden_size_sst, hidden_size_sst, HIDDEN_DROP) for _ in range(config.num_sst_layers - 2)])
+            sst_layers.append(FF(hidden_size_sst, N_SENTIMENT_CLASSES, OUTPUT_DROP))
         else:
             sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
 
         if config.num_para_layers > 1:
-            para_layers.append(FF(2*BERT_HIDDEN_SIZE, hidden_size, INPUT_DROP))
-            para_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_para_layers - 2)])
-            para_layers.append(FF(hidden_size, 1))
+            para_layers.append(FF(2*BERT_HIDDEN_SIZE, hidden_size_para, INPUT_DROP))
+            para_layers.extend([FF(hidden_size_para, hidden_size_para, HIDDEN_DROP) for _ in range(config.num_para_layers - 2)])
+            para_layers.append(FF(hidden_size_para, 1))
         else:
             para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP))
         
         if config.num_sts_layers > 1:
-            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, hidden_size, INPUT_DROP))
-            sts_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_sts_layers - 2)])
-            sts_layers.append(FF(hidden_size, 1, OUTPUT_DROP))
+            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, hidden_size_sts, INPUT_DROP))
+            sts_layers.extend([FF(hidden_size_sts, hidden_size_sts, HIDDEN_DROP) for _ in range(config.num_sts_layers - 2)])
+            sts_layers.append(FF(hidden_size_sts, 1, OUTPUT_DROP))
         else:
             sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP))
         self.sst_layers, self.para_layers, self.sts_layers = sst_layers, para_layers, sts_layers
