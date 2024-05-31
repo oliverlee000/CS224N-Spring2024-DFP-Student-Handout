@@ -13,7 +13,9 @@ base <- read_delim("ids-sst-train.csv")
 csfimdb$sentiment = ifelse(df_1$sentiment == 1, 4, 0)
 
 df_merged <- rbind(base, csfimdb)
-df_merged$...1 = 1:nrow(df_merged)
+df_merged <- df_merged %>%
+  select(id, sentence, sentiment)
+
 write.csv(df_merged, "ids-sst-train-merged.csv")
 ```
 
