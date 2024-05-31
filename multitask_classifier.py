@@ -498,7 +498,7 @@ def get_args():
     
     # 6. Hidden size for linear layers
     parser.add_argument("--sst_hidden_size", type=int,
-                        default = 250)
+                        default = 70)
     
     parser.add_argument("--para_hidden_size", type=int,
                         default = 10)
