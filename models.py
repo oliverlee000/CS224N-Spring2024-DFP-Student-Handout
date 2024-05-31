@@ -174,7 +174,7 @@ class MultitaskBERT(nn.Module):
     Cosine similarity loss function for similarity task.
     '''
     def cos_sim_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
-        mask = torch.where((sts_labels < 1.0) | (sts_labels >= 4.0), True, False)
+        mask = torch.where((sts_labels < 1.0) | (sts_labels >= 3.5), True, False)
         cos_sim_labels = torch.where(sts_labels[mask] < 1.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
         cos_sim_ids_1 = sts_ids_1[mask,:]
         cos_sim_ids_2 = sts_ids_2[mask,:]
