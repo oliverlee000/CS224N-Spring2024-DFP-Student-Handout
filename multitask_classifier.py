@@ -175,8 +175,8 @@ def train_multitask(args):
     config.num_sst_layers, config.num_para_layers, config.num_sts_layers = \
         args.sst_layers, args.para_layers, args.sts_layers
     
-    config.hidden_size_sst, config.hidden_size_para, config.hidden_size_sts = args.hidden_size_sst, \
-        args.hidden_size_para, args.hidden_size_sts
+    config.sst_hidden_size, config.para_hidden_size, config.sts_hidden_size = args.sst_hidden_size, \
+        args.para_hidden_size, args.sts_hidden_size
 
     model = MultitaskBERT(config)
     #print(model.parameters())
@@ -497,13 +497,13 @@ def get_args():
                         default = 'n')
     
     # 6. Hidden size for linear layers
-    parser.add_argument("--hidden_size_sst", type=int,
+    parser.add_argument("--sst_hidden_size", type=int,
                         default = 250)
     
-    parser.add_argument("--hidden_size_para", type=int,
+    parser.add_argument("--para_hidden_size", type=int,
                         default = 50)
     
-    parser.add_argument("--hidden_size_sts", type=int,
+    parser.add_argument("--sts_hidden_size", type=int,
                         default = 50)
     
 
