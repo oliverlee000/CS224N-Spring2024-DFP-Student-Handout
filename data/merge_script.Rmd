@@ -16,7 +16,8 @@ df_merged <- rbind(base, csfimdb)
 df_merged <- df_merged %>%
   select(id, sentence, sentiment)
 
-write.csv(df_merged, "ids-sst-train-merged.csv")
+# Make sure that csv is tab delimited
+write.table(df_merged, "ids-sst-train-merged.csv", row.names = FALSE, sep="\t")
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
