@@ -253,6 +253,8 @@ def train_multitask(args):
                 sts_mask_2 = sts_mask_2.to(device)
                 sts_labels = sts_labels.to(device).float().view(-1)
                 
+                size = args.batch_size # Added local variable in case cosine embedding loss is used
+
                 optimizer.zero_grad()
 
                 # Normal loss
@@ -269,21 +271,17 @@ def train_multitask(args):
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.cos_sim_loss == 'y':
-                        sts_loss = (sts_loss * args.batch_size + cos_loss) / (args.batch_size + n)
+                        sts_loss = (sts_loss * size + cos_loss) / (size + n)
+                        size += n
 
                 # Integrate Multiple Negatives Ranking Loss
                 if args.neg_ranking_loss != 'n':
-                    mnr_loss = 0
-                    # TODO: put mnr loss here
-                    '''
-                    embeddings_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
-                    mnr_loss = model.multiple_negatives_ranking_loss(embeddings_1, len(sts_ids_1))'''
+                    mnr_loss, n = model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
 
                     # if neg_ranking_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.neg_ranking_loss == 'y':
-                        sts_loss = mnr_loss
-                    else:
-                        sts_loss += mnr_loss
+                        sts_loss = (sts_loss * size + mnr_loss) / (size + n)
+                        size += n
 
 
                 sts_loss.backward()
@@ -486,7 +484,7 @@ def get_args():
                         default = 'y')
     # 3. Set neg ranking loss for similarity task
     parser.add_argument("--neg_ranking_loss", type=str,
-                        choices=('y', 'n', 'h'),
+                        choices=('y', 'n'),
                         default = 'n')
     # 4. Balance sampling
     parser.add_argument("--balance_sampling", type=int,

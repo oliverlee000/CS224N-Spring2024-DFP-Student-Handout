@@ -164,11 +164,32 @@ class MultitaskBERT(nn.Module):
         output_agr = self.sts_layers[-1](embeds, activation=False)
         return output_agr
 
-    def multiple_negatives_ranking_loss(self, embeddings, batch_size):
-        similarity_matrix = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=-1)
-        labels = torch.arange(batch_size).to(similarity_matrix.device)
-        loss = F.cross_entropy(similarity_matrix, labels)
-        return loss
+    '''
+    Returns negative ranking loss of pairs of equivalent sentences
+
+    1) Filters out all examples of sentence pairs that aren't equivalent
+    2) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
+    3) Returns cross entropy loss, with correct label being the diagonal, as well as number of examples considered
+    
+    '''
+    def multiple_negatives_ranking_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
+        #1) Filters out all examples of sentence pairs that aren't equivalent
+        mask = torch.where(sts_labels >= 3.5, True, False)
+        masked_ids_1 = sts_ids_1[mask,:]
+        masked_ids_2 = sts_ids_2[mask,:]
+        masked_mask_1 = sts_mask_1[mask,:]
+        masked_mask_2 = sts_mask_2[mask,:]
+
+        #2) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
+        emb_1 = self.bert(masked_ids_1, masked_mask_1)['last_hidden_state'][:,0,:]
+        emb_2 = self.bert(masked_ids_2, masked_mask_2)['last_hidden_state'][:,0,:]
+        similarity_matrix = F.cosine_similarity(emb_1, emb_2, dim=1)
+
+        # 3) Returns cross entropy loss, with correct label being the diagonal
+        n = len(masked_ids_1)
+        labels = torch.arange(n).to(similarity_matrix.device)
+        loss = F.cross_entropy(similarity_matrix, labels, reduction = 'sum')
+        return loss, n
     
     '''
     Cosine similarity loss function for similarity task.
