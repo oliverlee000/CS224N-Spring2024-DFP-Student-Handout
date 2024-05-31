@@ -112,6 +112,23 @@ def save_model(model, optimizer, args, config, filepath):
     print(f"save the model to {filepath}")
 
 '''
+Prints presets specified by args
+'''
+def print_presets(args):
+    print("Settings:")
+    print("Fine tune mode: " + args.fine_tune_mode)
+    print("Ensemble: " + args.boosted_bert)
+    print("Cosine similarity loss: + " + args.cos_sim_loss)
+    print("Negative rankings loss: " + args.neg_ranking_loss)
+    print("SST hidden layers: " + str(args.sst_layers))
+    print("SST hidden size: " + str(args.sst_hidden_size))
+    print("PARA hidden layers: " + str(args.para_layers))
+    print("PARA hidden size: " + str(args.para_hidden_size))
+    print("STS hidden layers: " + str(args.sts_layers))
+    print("STS hidden size: " + str(args.sts_hidden_size))
+    print("Training on task " + args.task + "...")
+
+'''
 If args.balance_sampling != 1: Undersample from para by a factor of args.balance_sampling.
 '''
 def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
@@ -547,6 +564,6 @@ if __name__ == "__main__":
     args = get_args()
     args.filepath = f'{args.fine_tune_mode}-{args.epochs}-{args.lr}-multitask.pt' # Save path.
     seed_everything(args.seed)  # Fix the seed for reproducibility.
-    print("Training on " + args.task + "...")
+    print_presets(args)
     train_multitask(args)
     test_multitask(args)
