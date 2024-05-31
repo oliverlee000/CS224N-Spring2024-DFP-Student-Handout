@@ -501,10 +501,10 @@ def get_args():
                         default = 250)
     
     parser.add_argument("--para_hidden_size", type=int,
-                        default = 50)
+                        default = 10)
     
     parser.add_argument("--sts_hidden_size", type=int,
-                        default = 50)
+                        default = 5)
     
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
