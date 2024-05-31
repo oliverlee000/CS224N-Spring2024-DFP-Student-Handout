@@ -1,5 +1,4 @@
-import random, numpy as np, argparse
-from types import SimpleNamespace
+import random, numpy as np
 
 import torch
 import torch.nn as nn
@@ -7,7 +6,6 @@ import torch.nn.functional as F
 from utils import *
 
 from torch.utils.data import DataLoader
-from optimizer import AdamW
 from bert import BertModel
 
 BERT_HIDDEN_SIZE = 768
@@ -40,6 +38,7 @@ class BoostedBERT(nn.Module):
         super(BoostedBERT, self).__init__()
         self.n = NUM_TASKS
         self.models = nn.ModuleList([MultitaskBERT(config) for _ in range(NUM_TASKS)])
+        print([name for name, p in self.models[0].named_parameters()])
 
     def forward(self, input_ids, attention_mask):
         return torch.sum([m(input_ids, attention_mask) for m in self.models]) / self.n
@@ -55,6 +54,37 @@ class BoostedBERT(nn.Module):
     
     def cosine_similarity_fine_tuning(self, output1, output2):
         return self.models[STS].cosine_similarity_fine_tuning(self, output1, output2)
+
+'''
+Consists exclusively of a feed forward layer
+'''
+class FF(nn.Module):
+    def __init__(self, hidden_size, output_size, dropout_prob=HIDDEN_DROP, relu=False):
+        super().__init__()
+        # Feed forward.
+        self.dropout = nn.Dropout(dropout_prob)
+        self.dense = nn.Linear(hidden_size, output_size)
+        self.af = F.gelu
+        if relu:
+            self.af = F.relu
+
+
+    def forward(self, hidden_states, activation=True):
+        """
+        Put elements in feed forward.
+        Feed forward consists of:
+        1. a dropout layer,
+        2. a linear layer, and
+        3. an activation function.
+
+        If activation = True, use activation
+        """
+        # TODO
+        hidden_states = self.dropout(hidden_states)
+        output = self.dense(hidden_states)
+        if activation:
+            output = self.af(output)
+        return output
 
 '''
 Multitask BERT class, starter training code, evaluation, and test code.
@@ -85,7 +115,7 @@ class MultitaskBERT(nn.Module):
         if config.num_sst_layers > 1:
             sst_layers.append(FF(BERT_HIDDEN_SIZE, hidden_size, INPUT_DROP))
             sst_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_sst_layers - 2)])
-            sst_layers.append(FF(hidden_size, N_SENTIMENT_CLASSES))
+            sst_layers.append(FF(hidden_size, N_SENTIMENT_CLASSES, OUTPUT_DROP))
         else:
             sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
 
@@ -101,7 +131,7 @@ class MultitaskBERT(nn.Module):
             sts_layers.extend([FF(hidden_size, hidden_size, HIDDEN_DROP) for _ in range(config.num_sts_layers - 2)])
             sts_layers.append(FF(hidden_size, 1, OUTPUT_DROP))
         else:
-            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP) for _ in range(1))
+            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP))
         self.sst_layers, self.para_layers, self.sts_layers = sst_layers, para_layers, sts_layers
 
     def forward(self, input_ids, attention_mask):
@@ -143,34 +173,3 @@ class MultitaskBERT(nn.Module):
     def cosine_similarity_fine_tuning(self, output1, output2):
         cosine_sim = F.cosine_similarity(output1, output2, dim=-1)
         return cosine_sim
-
-'''
-Consists exclusively of a feed forward layer
-'''
-class FF(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_prob=HIDDEN_DROP, relu=False):
-        super().__init__()
-        # Feed forward.
-        self.dropout = nn.Dropout(dropout_prob)
-        self.dense = nn.Linear(hidden_size, output_size)
-        self.af = F.gelu
-        if relu:
-            self.af = F.relu
-
-
-    def forward(self, hidden_states, activation=True):
-        """
-        Put elements in feed forward.
-        Feed forward consists of:
-        1. a dropout layer,
-        2. a linear layer, and
-        3. an activation function.
-
-        If activation = True, use activation
-        """
-        # TODO
-        hidden_states = self.dropout(hidden_states)
-        output = self.dense(hidden_states)
-        if activation:
-            output = self.af(output)
-        return output
