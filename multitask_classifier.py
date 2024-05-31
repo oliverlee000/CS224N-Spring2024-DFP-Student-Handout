@@ -118,6 +118,7 @@ def print_presets(args):
     print("Settings:")
     print("Fine tune mode: " + args.fine_tune_mode)
     print("Ensemble: " + args.boosted_bert)
+    print("Lora: " + args.lora)
     print("Cosine similarity loss: + " + args.cos_sim_loss)
     print("Negative rankings loss: " + args.neg_ranking_loss)
     print("SST hidden layers: " + str(args.sst_layers))
@@ -194,6 +195,8 @@ def train_multitask(args):
     
     config.sst_hidden_size, config.para_hidden_size, config.sts_hidden_size = args.sst_hidden_size, \
         args.para_hidden_size, args.sts_hidden_size
+    
+    config.lora = args.lora
 
     model = MultitaskBERT(config)
     #print(model.parameters())
@@ -202,9 +205,10 @@ def train_multitask(args):
     if args.boosted_bert == "y":
         model = BoostedBERT(config)
 
-
     model = model.to(device)
+
     #implementDoraLayer(model)
+    # mmake sure that the pretrained weights are frozen, adn that only the lora dora params
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
@@ -515,14 +519,18 @@ def get_args():
     
     # 6. Hidden size for linear layers
     parser.add_argument("--sst_hidden_size", type=int,
-                        default = 70)
+                        default = 100)
     
     parser.add_argument("--para_hidden_size", type=int,
-                        default = 10)
+                        default = 30)
     
     parser.add_argument("--sts_hidden_size", type=int,
-                        default = 5)
+                        default = 30)
     
+    # 7. Lora model
+    parser.add_argument("--lora", type=str,
+                        choices=('y', 'n'),
+                        default = 'n')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")

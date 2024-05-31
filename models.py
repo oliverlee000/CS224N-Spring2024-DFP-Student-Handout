@@ -7,6 +7,7 @@ from utils import *
 
 from torch.utils.data import DataLoader
 from bert import BertModel
+from new_lora import LoraBertModel
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
@@ -111,7 +112,14 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = False
             elif config.fine_tune_mode == 'full-model':
                 param.requires_grad = True
-        
+        # Create LoraBertModel if lora flag is on
+        if config.lora == 'y':
+            self.bert = LoraBertModel.from_pretrained('bert-base-uncased')
+            # Training parameters are by default marked true, so turn off in fine tune mode is last linear layer
+            for param in self.bert.parameters():
+                if config.fine_tune_mode == 'last-linear-layer':
+                    param.requires_grad = False
+
         sst_hidden_size, para_hidden_size, sts_hidden_size = \
             config.sst_hidden_size, config.para_hidden_size, config.sts_hidden_size
         sst_layers, para_layers, sts_layers = nn.ModuleList(), nn.ModuleList(), nn.ModuleList()
@@ -142,26 +150,25 @@ class MultitaskBERT(nn.Module):
         return output['last_hidden_state']
 
     def predict_sentiment(self, input_ids, attention_mask):
-        output = self.bert(input_ids, attention_mask)
-        embeds = output['last_hidden_state'][:,0,:]
+        embed = self.bert(input_ids, attention_mask)['last_hidden_state'][:,0,:]
         for i, layer_module in enumerate(self.sst_layers[:-1]):
-            embeds = layer_module(embeds, activation=True)
-        output = self.sst_layers[-1](embeds, activation=False)
+            embed = layer_module(embed, activation=True)
+        output = self.sst_layers[-1](embed, activation=False)
         return output
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        output1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
-        output2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
-        embeds = torch.cat((output1, output2), 1)
+        embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
+        embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
+        embeds = torch.cat((embed_1, embed_2), 1)
         for i, layer_module in enumerate(self.para_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
         output_agr = self.para_layers[-1](embeds, activation=False)
         return output_agr
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        output1 = self.bert(input_ids_1, attention_mask_1)
-        output2 = self.bert(input_ids_2, attention_mask_2)
-        embeds = torch.cat((output1['pooler_output'], output2['pooler_output']), 1)
+        embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
+        embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
+        embeds = torch.cat((embed_1, embed_2), 1)
         for i, layer_module in enumerate(self.sts_layers[:-1]):
             embeds = layer_module(embeds, activation=True)
         output_agr = self.sts_layers[-1](embeds, activation=False)

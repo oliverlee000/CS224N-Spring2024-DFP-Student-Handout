@@ -57,6 +57,7 @@ class LoRADoRA(nn.Module):
             self.weight = nn.Parameter(self.weight, requires_grad=False).to(device)
         
         #calculate m vector using description in handout
+        # add bias for each of them
         self.mVector = self.weight ** 2
         self.mVector = torch.sqrt(torch.sum(self.mVector, dim=0)).to(device)
 
@@ -65,11 +66,17 @@ class LoRADoRA(nn.Module):
         self.aMatrix = nn.Parameter(self.aMatrix * stdDev).to(device)
         self.bMatrix = torch.zeros(rank, dimIn) #replace with d and k
         self.bMatrix = nn.Parameter(self.bMatrix).to(device)
+        print(self.parameters()) #printing params
+        # Set up as linear layers, and not as weights and biases, so it is simpler
+
     def forward(self, x):
         x = x.to(self.aMatrix.device)
         #print("FORWARD LORA DORA")
         loraMatrix = torch.matmul(self.aMatrix, self.bMatrix) + self.weight
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
+
+        print(self.parameters()) #printing params
+        print([p.requires_grad() for p in self.parameters()])
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
 
 
@@ -82,6 +89,8 @@ def implementDoraLayer(model):
             setattr(model, name, LoRADoRA(dimOut=dimOut, dimIn=dimIn, rank=4, bias=module.bias.data.clone(), weight=module.weight.data.clone()))
         else:
             implementDoraLayer(module)
+    for param in model.parameters():
+        param.requires_grad = False
 
 TQDM_DISABLE=False
 
