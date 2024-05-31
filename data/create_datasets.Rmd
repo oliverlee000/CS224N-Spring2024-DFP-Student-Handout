@@ -1,0 +1,66 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(jsonlite)
+library(dplyr)
+library(utils)
+library(stringi)
+```
+
+```{r}
+# This merges the cfimdb and base files so that they exist in one csv file
+
+csfimdb <- read.delim("ids-cfimdb-train.csv")
+base <- read.delim("ids-sst-train.csv")
+
+# Transform labels of cfimdb
+csfimdb$sentiment = ifelse(csfimdb$sentiment == 1, 4, 0)
+
+df_merged <- rbind(base, csfimdb)
+df_merged <- df_merged %>%
+  select(id, sentence, sentiment)
+
+# Make sure that csv is tab delimited
+write.table(df_merged, "ids-sst-train-merged.csv", row.names = FALSE, sep="\t")
+```
+
+```{r}
+# Adds duplicate question dataset 
+
+
+duplicate_questions_raw <- fromJSON("stackexchange_duplicatequestions.json")
+colnames(duplicate_questions_raw) <- c("sentence1", "sentence2")
+
+set.seed(123)
+
+duplicate_questions <- as.data.frame(duplicate_questions_raw,
+                                     row.names = c("sentence1", "sentence2"))
+
+# Generate random ids
+duplicate_questions$id <- stri_rand_strings(nrow(duplicate_questions), 
+                                            25,
+                                            pattern="[0-9a-f]")
+duplicate_questions <- duplicate_questions %>%
+  mutate(similarity = 4.0) %>%
+  select(id, sentence1, sentence2, similarity)
+
+# Just get the first 1000 observations
+duplicate_questions <- duplicate_questions[0:1000,]
+
+# Make sure that csv is tab delimited
+write.table(df_merged, "ids-sts-train-duplicate-questions.csv", 
+            row.names = FALSE, sep="\t")
+
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

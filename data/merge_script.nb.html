@@ -1754,40 +1754,20 @@ display: none;
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBUaGlzIG1lcmdlcyB0aGUgY2ZpbWRiIGFuZCBiYXNlIGZpbGVzIHNvIHRoYXQgdGhleSBleGlzdCBpbiBvbmUgY3N2IGZpbGVcblxuY3NmaW1kYiA8LSByZWFkX2RlbGltKFwiaWRzLWNmaW1kYi10cmFpbi5jc3ZcIilcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShqc29ubGl0ZSlcbmBgYCJ9 -->
+<pre class="r"><code>library(jsonlite)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBUaGlzIG1lcmdlcyB0aGUgY2ZpbWRiIGFuZCBiYXNlIGZpbGVzIHNvIHRoYXQgdGhleSBleGlzdCBpbiBvbmUgY3N2IGZpbGVcblxuY3NmaW1kYiA8LSByZWFkX2RlbGltKFwiaWRzLWNmaW1kYi10cmFpbi5jc3ZcIilcbmJhc2UgPC0gcmVhZF9kZWxpbShcImlkcy1zc3QtdHJhaW4uY3N2XCIpXG5cbiMgVHJhbnNmb3JtIGxhYmVscyBvZiBjZmltZGJcbmNzZmltZGIkc2VudGltZW50ID0gaWZlbHNlKGNzZmltZGIkc2VudGltZW50ID09IDEsIDQsIDApXG5cbmRmX21lcmdlZCA8LSByYmluZChiYXNlLCBjc2ZpbWRiKVxuZGZfbWVyZ2VkIDwtIGRmX21lcmdlZCAlPiVcbiAgc2VsZWN0KGlkLCBzZW50ZW5jZSwgc2VudGltZW50KVxuXG4jIE1ha2Ugc3VyZSB0aGF0IGNzdiBpcyB0YWIgZGVsaW1pdGVkXG53cml0ZS50YWJsZShkZl9tZXJnZWQsIFwiaWRzLXNzdC10cmFpbi1tZXJnZWQuY3N2XCIsIHJvdy5uYW1lcyA9IEZBTFNFLCBzZXA9XCJcXHRcIilcbmBgYCJ9 -->
 <pre class="r"><code># This merges the cfimdb and base files so that they exist in one csv file
 
-csfimdb &lt;- read_delim(&quot;ids-cfimdb-train.csv&quot;)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiTmV3IG5hbWVzOlxu4oCiIGBgIC0+IGAuLi4xYFxuUm93czogMTcwNyBDb2x1bW5zOiA0XG7ilIDilIAgQ29sdW1uIHNwZWNpZmljYXRpb24g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAXG5EZWxpbWl0ZXI6IFwiXFx0XCJcbmNociAoMik6IGlkLCBzZW50ZW5jZVxuZGJsICgyKTogLi4uMSwgc2VudGltZW50XG5cbuKEuSBVc2UgYHNwZWMoKWAgdG8gcmV0cmlldmUgdGhlIGZ1bGwgY29sdW1uIHNwZWNpZmljYXRpb24gZm9yIHRoaXMgZGF0YS5cbuKEuSBTcGVjaWZ5IHRoZSBjb2x1bW4gdHlwZXMgb3Igc2V0IGBzaG93X2NvbF90eXBlcyA9IEZBTFNFYCB0byBxdWlldCB0aGlzIG1lc3NhZ2UuXG4ifQ== -->
-<pre><code>New names:
-• `` -&gt; `...1`
-Rows: 1707 Columns: 4
-── Column specification ──────────────────────────────────────────────────────────────────────────────────
-Delimiter: &quot;\t&quot;
-chr (2): id, sentence
-dbl (2): ...1, sentiment
+csfimdb &lt;- read_delim(&quot;ids-cfimdb-train.csv&quot;)
+base &lt;- read_delim(&quot;ids-sst-train.csv&quot;)
 
-ℹ Use `spec()` to retrieve the full column specification for this data.
-ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYmFzZSA8LSByZWFkX2RlbGltKFwiaWRzLXNzdC10cmFpbi5jc3ZcIilcbmBgYCJ9 -->
-<pre class="r"><code>base &lt;- read_delim(&quot;ids-sst-train.csv&quot;)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiTmV3IG5hbWVzOlxu4oCiIGBgIC0+IGAuLi4xYFxuUm93czogODU0NCBDb2x1bW5zOiA0XG7ilIDilIAgQ29sdW1uIHNwZWNpZmljYXRpb24g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAXG5EZWxpbWl0ZXI6IFwiXFx0XCJcbmNociAoMik6IGlkLCBzZW50ZW5jZVxuZGJsICgyKTogLi4uMSwgc2VudGltZW50XG5cbuKEuSBVc2UgYHNwZWMoKWAgdG8gcmV0cmlldmUgdGhlIGZ1bGwgY29sdW1uIHNwZWNpZmljYXRpb24gZm9yIHRoaXMgZGF0YS5cbuKEuSBTcGVjaWZ5IHRoZSBjb2x1bW4gdHlwZXMgb3Igc2V0IGBzaG93X2NvbF90eXBlcyA9IEZBTFNFYCB0byBxdWlldCB0aGlzIG1lc3NhZ2UuXG4ifQ== -->
-<pre><code>New names:
-• `` -&gt; `...1`
-Rows: 8544 Columns: 4
-── Column specification ──────────────────────────────────────────────────────────────────────────────────
-Delimiter: &quot;\t&quot;
-chr (2): id, sentence
-dbl (2): ...1, sentiment
-
-ℹ Use `spec()` to retrieve the full column specification for this data.
-ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBUcmFuc2Zvcm0gbGFiZWxzIG9mIGNmaW1kYlxuY3NmaW1kYiRzZW50aW1lbnQgPSBpZmVsc2UoY3NmaW1kYiRzZW50aW1lbnQgPT0gMSwgNCwgMClcblxuZGZfbWVyZ2VkIDwtIHJiaW5kKGJhc2UsIGNzZmltZGIpXG5kZl9tZXJnZWQgPC0gZGZfbWVyZ2VkICU+JVxuICBzZWxlY3QoaWQsIHNlbnRlbmNlLCBzZW50aW1lbnQpXG5cbiMgTWFrZSBzdXJlIHRoYXQgY3N2IGlzIHRhYiBkZWxpbWl0ZWRcbndyaXRlLnRhYmxlKGRmX21lcmdlZCwgXCJpZHMtc3N0LXRyYWluLW1lcmdlZC5jc3ZcIiwgcm93Lm5hbWVzID0gRkFMU0UsIHNlcD1cIlxcdFwiKVxuYGBgIn0= -->
-<pre class="r"><code># Transform labels of cfimdb
+# Transform labels of cfimdb
 csfimdb$sentiment = ifelse(csfimdb$sentiment == 1, 4, 0)
 
 df_merged &lt;- rbind(base, csfimdb)
@@ -1796,6 +1776,13 @@ df_merged &lt;- df_merged %&gt;%
 
 # Make sure that csv is tab delimited
 write.table(df_merged, &quot;ids-sst-train-merged.csv&quot;, row.names = FALSE, sep=&quot;\t&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBcbmBgYCJ9 -->
+<pre class="r"><code># </code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1810,7 +1797,7 @@ run any R code chunks. Instead, the output of the chunk when it was last
 run in the editor is displayed.</p>
 <!-- rnb-text-end -->
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3J9CiMgVGhpcyBtZXJnZXMgdGhlIGNmaW1kYiBhbmQgYmFzZSBmaWxlcyBzbyB0aGF0IHRoZXkgZXhpc3QgaW4gb25lIGNzdiBmaWxlCgpjc2ZpbWRiIDwtIHJlYWRfZGVsaW0oImlkcy1jZmltZGItdHJhaW4uY3N2IikKYmFzZSA8LSByZWFkX2RlbGltKCJpZHMtc3N0LXRyYWluLmNzdiIpCgojIFRyYW5zZm9ybSBsYWJlbHMgb2YgY2ZpbWRiCmNzZmltZGIkc2VudGltZW50ID0gaWZlbHNlKGNzZmltZGIkc2VudGltZW50ID09IDEsIDQsIDApCgpkZl9tZXJnZWQgPC0gcmJpbmQoYmFzZSwgY3NmaW1kYikKZGZfbWVyZ2VkIDwtIGRmX21lcmdlZCAlPiUKICBzZWxlY3QoaWQsIHNlbnRlbmNlLCBzZW50aW1lbnQpCgojIE1ha2Ugc3VyZSB0aGF0IGNzdiBpcyB0YWIgZGVsaW1pdGVkCndyaXRlLnRhYmxlKGRmX21lcmdlZCwgImlkcy1zc3QtdHJhaW4tbWVyZ2VkLmNzdiIsIHJvdy5uYW1lcyA9IEZBTFNFLCBzZXA9Ilx0IikKYGBgCgpBZGQgYSBuZXcgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpJbnNlcnQgQ2h1bmsqIGJ1dHRvbiBvbiB0aGUgdG9vbGJhciBvciBieSBwcmVzc2luZyAqQ21kK09wdGlvbitJKi4KCldoZW4geW91IHNhdmUgdGhlIG5vdGVib29rLCBhbiBIVE1MIGZpbGUgY29udGFpbmluZyB0aGUgY29kZSBhbmQgb3V0cHV0IHdpbGwgYmUgc2F2ZWQgYWxvbmdzaWRlIGl0IChjbGljayB0aGUgKlByZXZpZXcqIGJ1dHRvbiBvciBwcmVzcyAqQ21kK1NoaWZ0K0sqIHRvIHByZXZpZXcgdGhlIEhUTUwgZmlsZSkuIAoKVGhlIHByZXZpZXcgc2hvd3MgeW91IGEgcmVuZGVyZWQgSFRNTCBjb3B5IG9mIHRoZSBjb250ZW50cyBvZiB0aGUgZWRpdG9yLiBDb25zZXF1ZW50bHksIHVubGlrZSAqS25pdCosICpQcmV2aWV3KiBkb2VzIG5vdCBydW4gYW55IFIgY29kZSBjaHVua3MuIEluc3RlYWQsIHRoZSBvdXRwdXQgb2YgdGhlIGNodW5rIHdoZW4gaXQgd2FzIGxhc3QgcnVuIGluIHRoZSBlZGl0b3IgaXMgZGlzcGxheWVkLgoK</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3J9CmxpYnJhcnkoanNvbmxpdGUpCmBgYAoKYGBge3J9CiMgVGhpcyBtZXJnZXMgdGhlIGNmaW1kYiBhbmQgYmFzZSBmaWxlcyBzbyB0aGF0IHRoZXkgZXhpc3QgaW4gb25lIGNzdiBmaWxlCgpjc2ZpbWRiIDwtIHJlYWRfZGVsaW0oImlkcy1jZmltZGItdHJhaW4uY3N2IikKYmFzZSA8LSByZWFkX2RlbGltKCJpZHMtc3N0LXRyYWluLmNzdiIpCgojIFRyYW5zZm9ybSBsYWJlbHMgb2YgY2ZpbWRiCmNzZmltZGIkc2VudGltZW50ID0gaWZlbHNlKGNzZmltZGIkc2VudGltZW50ID09IDEsIDQsIDApCgpkZl9tZXJnZWQgPC0gcmJpbmQoYmFzZSwgY3NmaW1kYikKZGZfbWVyZ2VkIDwtIGRmX21lcmdlZCAlPiUKICBzZWxlY3QoaWQsIHNlbnRlbmNlLCBzZW50aW1lbnQpCgojIE1ha2Ugc3VyZSB0aGF0IGNzdiBpcyB0YWIgZGVsaW1pdGVkCndyaXRlLnRhYmxlKGRmX21lcmdlZCwgImlkcy1zc3QtdHJhaW4tbWVyZ2VkLmNzdiIsIHJvdy5uYW1lcyA9IEZBTFNFLCBzZXA9Ilx0IikKYGBgCgpgYGB7cn0KIyAKYGBgCgoKQWRkIGEgbmV3IGNodW5rIGJ5IGNsaWNraW5nIHRoZSAqSW5zZXJ0IENodW5rKiBidXR0b24gb24gdGhlIHRvb2xiYXIgb3IgYnkgcHJlc3NpbmcgKkNtZCtPcHRpb24rSSouCgpXaGVuIHlvdSBzYXZlIHRoZSBub3RlYm9vaywgYW4gSFRNTCBmaWxlIGNvbnRhaW5pbmcgdGhlIGNvZGUgYW5kIG91dHB1dCB3aWxsIGJlIHNhdmVkIGFsb25nc2lkZSBpdCAoY2xpY2sgdGhlICpQcmV2aWV3KiBidXR0b24gb3IgcHJlc3MgKkNtZCtTaGlmdCtLKiB0byBwcmV2aWV3IHRoZSBIVE1MIGZpbGUpLiAKClRoZSBwcmV2aWV3IHNob3dzIHlvdSBhIHJlbmRlcmVkIEhUTUwgY29weSBvZiB0aGUgY29udGVudHMgb2YgdGhlIGVkaXRvci4gQ29uc2VxdWVudGx5LCB1bmxpa2UgKktuaXQqLCAqUHJldmlldyogZG9lcyBub3QgcnVuIGFueSBSIGNvZGUgY2h1bmtzLiBJbnN0ZWFkLCB0aGUgb3V0cHV0IG9mIHRoZSBjaHVuayB3aGVuIGl0IHdhcyBsYXN0IHJ1biBpbiB0aGUgZWRpdG9yIGlzIGRpc3BsYXllZC4KCg==</div>
 
 
 
