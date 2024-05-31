@@ -488,7 +488,7 @@ def get_args():
                         default = 'n')
     # 4. Balance sampling
     parser.add_argument("--balance_sampling", type=int,
-                        help='under: undersample high-example tasks by factor of balance_sampling',
+                        help='choose what factor by which to reduce number of PARA examples',
                         default = 1)
     
     # 5. Boosted bert
