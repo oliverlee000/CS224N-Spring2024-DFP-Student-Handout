@@ -23,6 +23,56 @@ def preprocess_string(s):
                     .replace('\'', ' \'')
                     .split())
 
+'''
+Dataset for pretraining.
+Masks a portion of the word tokens of a given sentence, with the output being the missing word tokens.
+'''
+class MaskedWordDataset(Dataset):
+    def __init__(self, data, block_size):
+        self.MASK_CHAR = "\u2047" # the doublequestionmark character, for mask
+        self.PAD_CHAR = "\u25A1" # the empty square character, for pad
+
+        chars = list(sorted(list(set(data))))
+        assert self.MASK_CHAR not in chars
+        assert self.PAD_CHAR not in chars
+        chars.insert(0, self.MASK_CHAR)
+        chars.insert(0, self.PAD_CHAR)
+
+        self.stoi = {ch:i for i,ch in enumerate(chars)}
+        self.itos = {i:ch for i,ch in enumerate(chars)}
+
+        data_size, vocab_size = len(data), len(chars)
+        print(f'data has {data_size} characters, {vocab_size} unique.')
+
+        self.block_size = block_size
+        self.vocab_size = vocab_size
+        self.data = data.split('\n')
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        # TODO [part e]: see spec above
+        ### YOUR CODE HERE ###
+        #Step 0
+        document = self.data[idx]
+        #Step 1
+        document = document[0:random.randint(4, int(self.block_size*7/8)+1)]
+        mid = int(len(document)/2)
+        #Step 2
+        masked_length = int(np.random.normal(mid/2, scale=0.3, size=None))
+        #Step 3
+        prefix, mask, suffix = document[0:mid-int(masked_length/2)], document[mid-int(masked_length/2):mid+int(masked_length/2)], document[mid+int(masked_length/2):]
+        #Step 4
+        masked_string = str(prefix) + str(self.MASK_CHAR) + str(suffix) + str(self.MASK_CHAR) + str(mask)
+        masked_string = masked_string + str(('').join([self.PAD_CHAR for i in range(self.block_size + 1 - len(masked_string))]))
+        #Step 5
+        input_string, output_string = masked_string[:-1], masked_string[1:]
+        x, y = [self.stoi[ch] for ch in input_string], [self.stoi[ch] for ch in output_string]
+        #Step 6
+        x, y = torch.LongTensor(x), torch.LongTensor(y)
+        return x,y
+        ### END YOUR CODE ###
 
 class SentenceClassificationDataset(Dataset):
     def __init__(self, dataset, args):

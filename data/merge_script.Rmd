@@ -10,7 +10,7 @@ csfimdb <- read_delim("ids-cfimdb-train.csv")
 base <- read_delim("ids-sst-train.csv")
 
 # Transform labels of cfimdb
-csfimdb$sentiment = ifelse(df_1$sentiment == 1, 4, 0)
+csfimdb$sentiment = ifelse(csfimdb$sentiment == 1, 4, 0)
 
 df_merged <- rbind(base, csfimdb)
 df_merged <- df_merged %>%
