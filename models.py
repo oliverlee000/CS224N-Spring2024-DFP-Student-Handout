@@ -38,7 +38,6 @@ class BoostedBERT(nn.Module):
         super(BoostedBERT, self).__init__()
         self.n = NUM_TASKS
         self.models = nn.ModuleList([MultitaskBERT(config) for _ in range(NUM_TASKS)])
-        print([name for name, p in self.models[0].named_parameters()])
 
     def forward(self, input_ids, attention_mask):
         return torch.sum([m(input_ids, attention_mask) for m in self.models]) / self.n
@@ -52,8 +51,8 @@ class BoostedBERT(nn.Module):
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         return self.models[STS].predict_similarity(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
     
-    def cosine_similarity_fine_tuning(self, output1, output2):
-        return self.models[STS].cosine_similarity_fine_tuning(self, output1, output2)
+    def cos_sim_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
+        return self.models[STS].cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
 
 '''
 Consists exclusively of a feed forward layer
@@ -170,7 +169,19 @@ class MultitaskBERT(nn.Module):
         labels = torch.arange(batch_size).to(similarity_matrix.device)
         loss = F.cross_entropy(similarity_matrix, labels)
         return loss
-
-    def cosine_similarity_fine_tuning(self, output1, output2):
-        cosine_sim = F.cosine_similarity(output1, output2, dim=-1)
-        return cosine_sim
+    
+    '''
+    Cosine similarity loss function for similarity task.
+    '''
+    def cos_sim_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
+        mask = torch.where((sts_labels < 1.0) | (sts_labels >= 4.0), True, False)
+        cos_sim_labels = torch.where(sts_labels[mask] < 1.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
+        cos_sim_ids_1 = sts_ids_1[mask,:]
+        cos_sim_ids_2 = sts_ids_2[mask,:]
+        cos_sim_mask_1 = sts_mask_1[mask,:]
+        cos_sim_mask_2 = sts_mask_2[mask,:]
+        cos_sim_emb_1 = self.bert(cos_sim_ids_1, cos_sim_mask_1)['last_hidden_state'][:,0,:]
+        cos_sim_emb_2 = self.bert(cos_sim_ids_2, cos_sim_mask_2)['last_hidden_state'][:,0,:]
+        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels, reduction='sum')
+        n = len(cos_sim_ids_1)
+        return cos_loss, n

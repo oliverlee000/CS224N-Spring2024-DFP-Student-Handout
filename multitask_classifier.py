@@ -122,22 +122,6 @@ def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
 
     return sst_train_data, para_train_data, sts_train_data
 
-'''
-Cosine similarity loss function for similarity task.
-'''
-def cos_sim_loss(model, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
-    mask = torch.where((sts_labels < 1.0) | (sts_labels >= 4.0), True, False)
-    cos_sim_labels = torch.where(sts_labels[mask] < 1.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
-    cos_sim_ids_1 = sts_ids_1[mask,:]
-    cos_sim_ids_2 = sts_ids_2[mask,:]
-    cos_sim_mask_1 = sts_mask_1[mask,:]
-    cos_sim_mask_2 = sts_mask_2[mask,:]
-    cos_sim_emb_1 = model(cos_sim_ids_1, cos_sim_mask_1)[:,0,:]
-    cos_sim_emb_2 = model(cos_sim_ids_2, cos_sim_mask_2)[:,0,:]
-    cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels, reduction='sum')
-    n = len(cos_sim_ids_1)
-    return cos_loss, n
-
 def train_multitask(args):
     '''Train MultitaskBERT.
 
@@ -281,7 +265,7 @@ def train_multitask(args):
                 # Map labels with cosine labels -- equivalent is 1, unrelated is -1
                 # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
                 if args.cos_sim_loss != 'n':
-                    cos_loss, n = cos_sim_loss(model, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    cos_loss, n = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
                     
                     # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
                     if args.cos_sim_loss == 'y':
