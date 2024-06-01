@@ -42,7 +42,7 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
 BERT_HIDDEN_SIZE = 768
-FINE_TUNING_DOWNWEIGHT = 0.2 # downweights cosine similarity and negative ranking loss finetuning
+FINE_TUNING_DOWNWEIGHT = 1 # downweights cosine similarity and negative ranking loss finetuning
 
 #dimIn = k
 #dimOut = d
@@ -269,11 +269,12 @@ def train_multitask(args):
                 para_mask_1 = para_mask_1.to(device)
                 para_ids_2 = para_ids_2.to(device)
                 para_mask_2 = para_mask_2.to(device)
-                para_labels = para_labels.to(device).float()
+                para_labels = para_labels.to(device).float().view(-1)
 
                 optimizer.zero_grad()
                 para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
-                para_loss = F.binary_cross_entropy_with_logits(para_logits, torch.unsqueeze(para_labels, dim = 1), reduction='sum') / args.batch_size
+                para_logits = torch.squeeze(para_logits, 1)
+                para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels, reduction='sum') / args.batch_size
                 
                 para_loss.backward()
                 optimizer.step()
@@ -290,7 +291,7 @@ def train_multitask(args):
                 sts_mask_1 = sts_mask_1.to(device)
                 sts_ids_2 = sts_ids_2.to(device)
                 sts_mask_2 = sts_mask_2.to(device)
-                sts_labels = sts_labels.to(device).float().view(-1)
+                sts_labels = sts_labels.to(device).float()
                 
                 size = args.batch_size # Added local variable in case cosine embedding loss is used
 
@@ -299,6 +300,7 @@ def train_multitask(args):
                 # Normal loss
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                sts_logits = torch.squeeze(sts_logits, 1)
                 sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
 
                 sts_loss.backward()

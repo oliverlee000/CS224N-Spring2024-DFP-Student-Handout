@@ -169,7 +169,7 @@ class MultitaskBERT(nn.Module):
         if self.concat:
             # Concanate embeddings together, then return NN output of concatenation
             embeds = torch.cat((embed_1, embed_2), 1)
-            output = self.para_layers(embeds).squeeze(output, 1)
+            output = self.para_layers(embeds)
             return output
         else:
             output_1 = self.para_layers(embed_1)
@@ -183,12 +183,12 @@ class MultitaskBERT(nn.Module):
         if self.concat:
             # Concanate embeddings together, then return NN output of concatenation
             embeds = torch.cat((embed_1, embed_2), 1)
-            output = self.sts_layers(embeds).squeeze(output, 1)
+            output = self.sts_layers(embeds)
             return output
         else:
             output_1 = self.sts_layers(embed_1)
             output_2 = self.sts_layers(embed_2)
-            output = F.cosine_similarity(output_1, output_2, dim = -1)
+            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
             return output
 
     '''

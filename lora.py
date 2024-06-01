@@ -5,10 +5,11 @@ from base_bert import BertPreTrainedModel
 from utils import *
 import math
 
-LORA_SIZE = 8
-
 
 # Make sure to keep the pretrained weights; otherwise, LoraDora should decrease parameters
+
+LORA_SIZE = 50
+
 
 '''
 Lora-fied version of BertSelfAttention
