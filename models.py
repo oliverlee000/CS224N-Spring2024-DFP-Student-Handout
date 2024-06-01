@@ -59,6 +59,28 @@ class BoostedBERT(nn.Module):
         return self.models[STS].multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
 
 '''
+Neural net consisting of feed forward layers'''
+class NN(nn.Module):
+    def __init__(self, n, input_size, hidden_size, output_size, input_drop=INPUT_DROP, hidden_drop=HIDDEN_DROP, output_drop=OUTPUT_DROP, relu=False):
+        super().__init__()
+        self.n = n
+        self.layers = nn.ModuleList()
+        if n > 1:
+            self.layers.append(FF(input_size, hidden_size, input_drop, relu))
+            self.layers.extend([FF(hidden_size, hidden_size, hidden_drop, relu) for _ in range(n - 2)])
+            self.layers.append(FF(hidden_size, output_size, output_drop, relu))
+        elif n == 1:
+            self.layers.append(FF(input_size, output_size, output_drop, relu))
+    
+    def forward(self, input):
+        if self.n == 0:
+            return input
+        for _, layer_module in enumerate(self.layers[:-1]):
+            input = layer_module(input, activation=True)
+        output = self.layers[-1](input, activation=False)
+        return output
+
+'''
 Consists exclusively of a feed forward layer
 '''
 class FF(nn.Module):
@@ -82,7 +104,6 @@ class FF(nn.Module):
 
         If activation = True, use activation
         """
-        # TODO
         hidden_states = self.dropout(hidden_states)
         output = self.dense(hidden_states)
         if activation:
@@ -122,28 +143,16 @@ class MultitaskBERT(nn.Module):
 
         sst_hidden_size, para_hidden_size, sts_hidden_size = \
             config.sst_hidden_size, config.para_hidden_size, config.sts_hidden_size
-        sst_layers, para_layers, sts_layers = nn.ModuleList(), nn.ModuleList(), nn.ModuleList()
-        if config.num_sst_layers > 1:
-            sst_layers.append(FF(BERT_HIDDEN_SIZE, sst_hidden_size, INPUT_DROP))
-            sst_layers.extend([FF(sst_hidden_size, sst_hidden_size, HIDDEN_DROP) for _ in range(config.num_sst_layers - 2)])
-            sst_layers.append(FF(sst_hidden_size, N_SENTIMENT_CLASSES, OUTPUT_DROP))
-        else:
-            sst_layers.append(FF(BERT_HIDDEN_SIZE, N_SENTIMENT_CLASSES))
-
-        if config.num_para_layers > 1:
-            para_layers.append(FF(2*BERT_HIDDEN_SIZE, para_hidden_size, INPUT_DROP))
-            para_layers.extend([FF(para_hidden_size, para_hidden_size, HIDDEN_DROP) for _ in range(config.num_para_layers - 2)])
-            para_layers.append(FF(para_hidden_size, 1))
-        else:
-            para_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP))
         
-        if config.num_sts_layers > 1:
-            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, sts_hidden_size, INPUT_DROP))
-            sts_layers.extend([FF(sts_hidden_size, sts_hidden_size, HIDDEN_DROP) for _ in range(config.num_sts_layers - 2)])
-            sts_layers.append(FF(sts_hidden_size, 1, OUTPUT_DROP))
-        else:
-            sts_layers.append(FF(2*BERT_HIDDEN_SIZE, 1, OUTPUT_DROP))
-        self.sst_layers, self.para_layers, self.sts_layers = sst_layers, para_layers, sts_layers
+        self.sst_layers, self.para_layers, self.sts_layers = NN(config.num_sst_layers, BERT_HIDDEN_SIZE, sst_hidden_size, N_SENTIMENT_CLASSES), \
+            NN(config.num_para_layers, BERT_HIDDEN_SIZE, para_hidden_size, para_hidden_size), NN(config.num_sts_layers, BERT_HIDDEN_SIZE, sts_hidden_size, sts_hidden_size)
+        
+
+        # If concat, then concatenate input embeddings and push into feed forward; else take dot product
+        self.concat = config.concat
+        if self.concat:
+            self.para_layers, self.sts_layers = NN(config.num_para_layers, 2*BERT_HIDDEN_SIZE, para_hidden_size, 1), \
+                NN(config.num_sts_layers, 2*BERT_HIDDEN_SIZE, sts_hidden_size, 1)
 
     def forward(self, input_ids, attention_mask):
         output = self.bert(input_ids, attention_mask)
@@ -151,28 +160,36 @@ class MultitaskBERT(nn.Module):
 
     def predict_sentiment(self, input_ids, attention_mask):
         embed = self.bert(input_ids, attention_mask)['last_hidden_state'][:,0,:]
-        for i, layer_module in enumerate(self.sst_layers[:-1]):
-            embed = layer_module(embed, activation=True)
-        output = self.sst_layers[-1](embed, activation=False)
+        output = self.sst_layers(embed)
         return output
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
         embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
-        embeds = torch.cat((embed_1, embed_2), 1)
-        for i, layer_module in enumerate(self.para_layers[:-1]):
-            embeds = layer_module(embeds, activation=True)
-        output_agr = self.para_layers[-1](embeds, activation=False)
-        return output_agr
+        if self.concat:
+            # Concanate embeddings together, then return NN output of concatenation
+            embeds = torch.cat((embed_1, embed_2), 1)
+            output = self.para_layers(embeds).squeeze(output, 1)
+            return output
+        else:
+            output_1 = self.para_layers(embed_1)
+            output_2 = self.para_layers(embed_2)
+            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
+            return output
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
         embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
-        embeds = torch.cat((embed_1, embed_2), 1)
-        for i, layer_module in enumerate(self.sts_layers[:-1]):
-            embeds = layer_module(embeds, activation=True)
-        output_agr = self.sts_layers[-1](embeds, activation=False)
-        return output_agr
+        if self.concat:
+            # Concanate embeddings together, then return NN output of concatenation
+            embeds = torch.cat((embed_1, embed_2), 1)
+            output = self.sts_layers(embeds).squeeze(output, 1)
+            return output
+        else:
+            output_1 = self.sts_layers(embed_1)
+            output_2 = self.sts_layers(embed_2)
+            output = F.cosine_similarity(output_1, output_2, dim = -1)
+            return output
 
     '''
     Returns negative ranking loss of pairs of equivalent sentences.

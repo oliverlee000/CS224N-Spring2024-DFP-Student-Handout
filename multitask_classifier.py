@@ -123,7 +123,8 @@ def print_presets(args):
     print("Ensemble: " + args.boosted_bert)
     print("Lora: " + args.lora)
     print("Cosine similarity loss: + " + args.cos_sim_loss)
-    print("Negative rankings loss: " + args.neg_ranking_loss)
+    print("Negative rankings loss: " + args.neg_rankings_loss)
+    print("Concat: " + str(args.concat))
     print("SST hidden layers: " + str(args.sst_layers))
     print("SST hidden size: " + str(args.sst_hidden_size))
     print("PARA hidden layers: " + str(args.para_layers))
@@ -216,6 +217,8 @@ def train_multitask(args):
     
     config.lora = args.lora
 
+    config.concat = args.concat
+
     model = MultitaskBERT(config)
     
     # Change model to boosted if flag is on
@@ -269,7 +272,6 @@ def train_multitask(args):
 
                 optimizer.zero_grad()
                 para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
-                para_logits = torch.squeeze(para_logits, 1)
                 para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels.view(-1), reduction='sum') / args.batch_size
                 
                 para_loss.backward()
@@ -296,7 +298,7 @@ def train_multitask(args):
                 # Normal loss
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
+                sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
 
                 sts_loss.backward()
                 optimizer.step()
@@ -562,6 +564,11 @@ def get_args():
     parser.add_argument("--lora", type=str,
                         choices=('y', 'n'),
                         default = 'n')
+
+    # 8. Concatenate
+    parser.add_argument("--concat",
+                        help='Concatenate output strings of para and sts',
+                        action='store_true')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
