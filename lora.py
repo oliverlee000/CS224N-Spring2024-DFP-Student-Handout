@@ -12,18 +12,6 @@ LORA_SIZE = 10
 # Make sure to keep the pretrained weights; otherwise, LoraDora should decrease parameters
 
 '''
-Returns function that is equivalent to applying Lora layers W_0, A, and B
-
-W_0: initial pretrained weights, Linear layer
-A: first parameter from Lora, Linear layer
-B: second parameter from Lora, Linear layer
-'''
-def lora_dense(W0, A, B):
-  def apply_lora(x):
-    return W0(x) + B(A(x))
-  return apply_lora
-
-'''
 Lora-fied version of BertSelfAttention
 '''
 class LoraBertSelfAttention(nn.Module):

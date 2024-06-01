@@ -19,6 +19,9 @@ base <- read.delim("ids-sst-train.csv")
 # Transform labels of cfimdb
 csfimdb$sentiment = ifelse(csfimdb$sentiment == 1, 4, 1)
 
+csfimdb <- csfimdb %>%
+  filter(sentiment == 4)
+
 df_merged <- rbind(base, csfimdb)
 df_merged <- df_merged %>%
   select(id, sentence, sentiment)
@@ -53,7 +56,7 @@ duplicate_questions <- duplicate_questions %>%
 duplicate_questions <- duplicate_questions[0:1000,]
 
 # Make sure that csv is tab delimited
-write.table(df_merged, "ids-para-train-duplicate-questions.csv", 
+write.table(df_merged, "para-train-duplicate-questions.csv", 
             row.names = FALSE, sep="\t")
 
 
