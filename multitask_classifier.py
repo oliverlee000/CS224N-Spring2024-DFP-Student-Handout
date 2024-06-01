@@ -311,9 +311,11 @@ def train_multitask(args):
                                                                                 cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
                                                                                 cos_sim_batch['labels'])
                     
-                    sst_ids = sst_ids.to(device)
-                    sst_mask = sst_mask.to(device)
-                    sst_labels = sst_labels.to(device).float().view(-1)
+                    sts_ids_1 = sts_ids_1.to(device)
+                    sts_mask_1 = sts_mask_1.to(device)
+                    sts_ids_2 = sts_ids_2.to(device)
+                    sts_mask_2 = sts_mask_2.to(device)
+                    sts_labels = sts_labels.to(device).float().view(-1)
 
                     optimizer.zero_grad()
 
@@ -331,9 +333,11 @@ def train_multitask(args):
                                                                                 neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
                                                                                 neg_rankings_batch['labels'])
                     
-                    sst_ids = sst_ids.to(device)
-                    sst_mask = sst_mask.to(device)
-                    sst_labels = sst_labels.to(device).float()
+                    sts_ids_1 = sts_ids_1.to(device)
+                    sts_mask_1 = sts_mask_1.to(device)
+                    sts_ids_2 = sts_ids_2.to(device)
+                    sts_mask_2 = sts_mask_2.to(device)
+                    sts_labels = sts_labels.to(device).float().view(-1)
 
                     optimizer.zero_grad()
 
@@ -341,7 +345,7 @@ def train_multitask(args):
                     neg_rankings_loss.backward()
                     optimizer.step()
 
-                    train_loss += cos_loss.item()
+                    train_loss += neg_rankings_loss.item()
                     num_batches += 1
         
         train_loss = train_loss / (num_batches)
