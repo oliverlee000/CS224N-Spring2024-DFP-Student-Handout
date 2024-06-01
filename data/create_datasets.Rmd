@@ -44,7 +44,7 @@ duplicate_questions <- as.data.frame(duplicate_questions_raw,
 
 # Generate random ids
 duplicate_questions$id <- stri_rand_strings(nrow(duplicate_questions), 
-                                            25,
+                                            50,
                                             pattern="[0-9a-f]")
 
 # Set is_duplicate to 1.0
@@ -56,9 +56,18 @@ duplicate_questions <- duplicate_questions %>%
 duplicate_questions <- duplicate_questions[0:1000,]
 
 # Make sure that csv is tab delimited
-write.table(df_merged, "para-train-duplicate-questions.csv", 
+write.table(duplicate_questions, "para-train-duplicate-questions.csv", 
             row.names = FALSE, sep="\t")
 
+# Add merged para
+
+para_base <- read.delim("quora-train.csv")
+
+para_merged <- rbind(para_base, duplicate_questions)
+
+# Make sure that csv is tab delimited
+write.table(para_merged, "para-train-merged.csv", 
+            row.names = FALSE, sep="\t")
 
 ```
 
