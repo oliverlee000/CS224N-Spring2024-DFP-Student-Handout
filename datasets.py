@@ -25,7 +25,7 @@ def preprocess_string(s):
 
 '''
 Dataset for pretraining.
-Masks a portion of the word tokens of a given sentence, with the output being the missing word tokens.
+Masks 15% of the word tokens of a given sentence, with the output being the missing word tokens.
 '''
 class MaskedWordDataset(Dataset):
     def __init__(self, data, block_size):

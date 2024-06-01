@@ -427,9 +427,7 @@ def test_multitask(args):
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
-                    model_eval_test_sst(sst_test_dataloader,
-                                            para_test_dataloader,
-                                            sts_test_dataloader, model, device)
+                    model_eval_test_sst(sst_test_dataloader, model, device)
 
             with open(args.sst_dev_out, "w+") as f:
                 print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
@@ -446,9 +444,7 @@ def test_multitask(args):
 
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
-                    model_eval_test_para(sst_test_dataloader,
-                                            para_test_dataloader,
-                                            sts_test_dataloader, model, device)
+                    model_eval_test_para(para_test_dataloader, model, device)
 
             with open(args.para_dev_out, "w+") as f:
                 print(f"dev paraphrase acc :: {dev_paraphrase_accuracy :.3f}")
@@ -461,9 +457,7 @@ def test_multitask(args):
                 for p, s in zip(test_para_sent_ids, test_para_y_pred):
                     f.write(f"{p} , {s} \n")
         else:
-            dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_sts(sst_dev_dataloader,
-                                                                        para_dev_dataloader,
-                                                                        sts_dev_dataloader, model, device)
+            dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_sts(sts_dev_dataloader, model, device)
 
             test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_sts(sts_test_dataloader, model, device)
@@ -527,7 +521,7 @@ def get_args():
     parser.add_argument("--sts_hidden_size", type=int,
                         default = 30)
     
-    # 7. Lora model
+    # 7. Lora model=
     parser.add_argument("--lora", type=str,
                         choices=('y', 'n'),
                         default = 'n')
@@ -548,7 +542,7 @@ def get_args():
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--fine-tune-mode", type=str,
                         help='last-linear-layer: the BERT parameters are frozen and the task specific head parameters are updated; full-model: BERT parameters are updated as well',
-                        choices=('last-linear-layer', 'full-model'), default="last-linear-layer")
+                        choices=('last-linear-layer', 'full-model'), default="full-model")
     parser.add_argument("--use_gpu", action='store_true')
 
     parser.add_argument("--sst_dev_out", type=str, default="predictions/sst-dev-output.csv")

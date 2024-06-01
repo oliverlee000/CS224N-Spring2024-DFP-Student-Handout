@@ -43,6 +43,8 @@ duplicate_questions <- as.data.frame(duplicate_questions_raw,
 duplicate_questions$id <- stri_rand_strings(nrow(duplicate_questions), 
                                             25,
                                             pattern="[0-9a-f]")
+
+# Set similarity to 4.0
 duplicate_questions <- duplicate_questions %>%
   mutate(similarity = 4.0) %>%
   select(id, sentence1, sentence2, similarity)

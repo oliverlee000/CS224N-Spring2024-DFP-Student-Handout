@@ -175,7 +175,9 @@ class MultitaskBERT(nn.Module):
         return output_agr
 
     '''
-    Returns negative ranking loss of pairs of equivalent sentences
+    Returns negative ranking loss of pairs of equivalent sentences.
+    We take the cross similarity of each sentences in sts_ids_1 with all sentences in sts_ids_2, optimizing so that
+    all pairs of sentences which are labeled as equivalent (score 3.5) or higher, get high cosine similarity scores
 
     1) Filters out all examples of sentence pairs that aren't equivalent
     2) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
@@ -193,12 +195,13 @@ class MultitaskBERT(nn.Module):
         #2) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
         emb_1 = self.bert(masked_ids_1, masked_mask_1)['last_hidden_state'][:,0,:]
         emb_2 = self.bert(masked_ids_2, masked_mask_2)['last_hidden_state'][:,0,:]
-        similarity_matrix = F.cosine_similarity(emb_1, emb_2, dim=1)
+
+        n = len(masked_ids_1) # Number of equivalent sentences
+        similarities = emb_1 @ emb_2.transpose(-1, -2) / torch.linalg.vector_norm(emb_1, dim = -1) / torch.linalg.vector_norm(emb_2, dim = -1)
 
         # 3) Returns cross entropy loss, with correct label being the diagonal
-        n = len(masked_ids_1)
-        labels = torch.arange(n).to(similarity_matrix.device)
-        loss = F.cross_entropy(similarity_matrix, labels, reduction = 'sum')
+        labels = torch.arange(n).to(similarities.device)
+        loss = F.cross_entropy(similarities, labels, reduction ='sum')
         return loss, n
     
     '''

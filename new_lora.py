@@ -12,6 +12,18 @@ LORA_SIZE = 10
 # Make sure to keep the pretrained weights; otherwise, LoraDora should decrease parameters
 
 '''
+Returns function that is equivalent to applying Lora layers W_0, A, and B
+
+W_0: initial pretrained weights, Linear layer
+A: first parameter from Lora, Linear layer
+B: second parameter from Lora, Linear layer
+'''
+def lora_dense(W0, A, B):
+  def apply_lora(x):
+    return W0(x) + B(A(x))
+  return apply_lora
+
+'''
 Lora-fied version of BertSelfAttention
 '''
 class LoraBertSelfAttention(nn.Module):
@@ -91,9 +103,9 @@ class LoraBertSelfAttention(nn.Module):
     # using self.transform (more details inside the function).
     # Size of *_layer is [bs, num_attention_heads, seq_len, attention_head_size].
     # Dora transform key, value, query
-    key = self.key + self.key_A @ self.key_B
-    value = self.value + self.value_A @ self.value_B
-    query = self.query + self.query_A @ self.query_B
+    key = lora_dense(self.key, self.key_A, self.key_B)
+    value = lora_dense(self.value, self.value_A, self.value_B)
+    query = lora_dense(self.query, self.query_A, self.query_B)
 
     key_layer = self.transform(hidden_states, key)
     value_layer = self.transform(hidden_states, value)
@@ -163,9 +175,9 @@ class LoraBertLayer(nn.Module):
     4. An add-norm operation that takes the input and output of the feed forward layer.
     """
     # Lora transform
-    attention_dense = self.attention_dense + self.attention_dense_A @ self.attention_dense_B
-    interm_dense = self.interm_dense + self.interm_dense_A @ self.interm_dense_B
-    out_dense = self.out_dense + self.out_dense_A @ self.out_dense_B
+    attention_dense = lora_dense(self.attention_dense, self.attention_dense_A, self.attention_dense_B)
+    interm_dense = lora_dense(self.interm_dense, self.interm_dense_A, self.interm_dense_B)
+    out_dense = lora_dense(self.out_dense, self.out_dense_A, self.out_dense_B)
 
 
     attn_output = self.self_attention(hidden_states, attention_mask)
@@ -262,7 +274,7 @@ class LoraBertModel(BertPreTrainedModel):
     attention_mask: same size as input_ids, 1 represents non-padding tokens, 0 represents padding tokens
     """
     # Dora transform pooler dense
-    pooler_dense = self.pooler_dense + self.pooler_dense_A @ self.pooler_dense_B
+    pooler_dense = lora_dense(self.pooler_dense, self.pooler_dense_A, self.pooler_dense_B)
 
     # Get the embedding for each input token.
     embedding_output = self.embed(input_ids=input_ids)
