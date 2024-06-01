@@ -145,6 +145,7 @@ def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
 
     return sst_train_data, para_train_data, sts_train_data
 
+
 def train_multitask(args):
     '''Train MultitaskBERT.
 
@@ -221,7 +222,6 @@ def train_multitask(args):
     config.concat = args.concat
 
     model = MultitaskBERT(config)
-    
     # Change model to boosted if flag is on
     if args.boosted_bert == "y":
         model = BoostedBERT(config)
@@ -273,7 +273,7 @@ def train_multitask(args):
 
                 optimizer.zero_grad()
                 para_logits = model.predict_paraphrase(para_ids_1, para_mask_1, para_ids_2, para_mask_2)
-                para_loss = F.binary_cross_entropy_with_logits(para_logits, para_labels.view(-1), reduction='sum') / args.batch_size
+                para_loss = F.binary_cross_entropy_with_logits(para_logits, torch.unsqueeze(para_labels, dim = 1), reduction='sum') / args.batch_size
                 
                 para_loss.backward()
                 optimizer.step()
@@ -322,8 +322,8 @@ def train_multitask(args):
 
                     optimizer.zero_grad()
 
-                    cos_loss = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
-                    (FINE_TUNING_DOWNWEIGHT * cos_loss).backward()
+                    cos_loss = FINE_TUNING_DOWNWEIGHT * model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    cos_loss.backward()
                     optimizer.step()
 
                     train_loss += cos_loss.item()
@@ -344,8 +344,8 @@ def train_multitask(args):
 
                     optimizer.zero_grad()
 
-                    neg_rankings_loss = model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
-                    (FINE_TUNING_DOWNWEIGHT * neg_rankings_loss).backward()
+                    neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
+                    neg_rankings_loss.backward()
                     optimizer.step()
 
                     train_loss += neg_rankings_loss.item()

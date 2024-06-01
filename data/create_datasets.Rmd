@@ -49,15 +49,16 @@ duplicate_questions$id <- stri_rand_strings(nrow(duplicate_questions),
 
 # Set is_duplicate to 1.0
 duplicate_questions <- duplicate_questions %>%
-  mutate(is_duplicate = 1.0) %>%
-  select(id, sentence1, sentence2, is_duplicate)
+  mutate(similarity = 1.0) %>%
+  select(id, sentence1, sentence2, simliarity)
 
 # Just get the first 1000 observations
-duplicate_questions <- duplicate_questions[0:1000,]
+write.csv(duplicate_questions, "para-train-duplicate-questions.csv", 
+            row.names = FALSE, sep="\t")
+```
+```{r}
 
 # Make sure that csv is tab delimited
-write.table(duplicate_questions, "para-train-duplicate-questions.csv", 
-            row.names = FALSE, sep="\t")
 
 # Add merged para
 
