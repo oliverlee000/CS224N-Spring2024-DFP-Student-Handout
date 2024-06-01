@@ -71,6 +71,39 @@ write.table(para_merged, "para-train-merged.csv",
 
 ```
 
+```{r}
+# Add cosine similarity loss data
+sts_raw <- read.delim("sts-train.csv")
+
+# 1 for equivalent sentences, 0 for non equivalent sentences
+cos_sim <- sts_raw %>%
+  filter(similarity >= 3.5 | similarity < 1.0) %>%
+  mutate(equivalence = ifelse(similarity >= 3.5, 1, -1)) %>%
+  select(id, sentence1, sentence2, equivalence)
+
+# Make sure that csv is tab delimited
+write.csv(cos_sim, "cos-sim-train.csv", 
+            row.names = FALSE, sep="\t")
+
+```
+
+```{r}
+# Add negative rankings loss data
+sts_raw <- read.delim("sts-train.csv")
+
+neg_rankings <- sts_raw %>%
+  filter(similarity >= 3.5) %>%
+  select(id, sentence1, sentence2, similarity)
+
+# Make sure that csv is tab delimited
+write.csv(neg_rankings, "neg-rankings-train.csv", 
+            row.names = FALSE, sep="\t")
+
+```
+
+
+
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 

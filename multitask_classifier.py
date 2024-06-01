@@ -31,7 +31,10 @@ from datasets import (
     SentenceClassificationTestDataset,
     SentencePairDataset,
     SentencePairTestDataset,
-    load_multitask_data
+    load_multitask_data,
+    load_sts_data,
+    load_cos_sim_data,
+    load_neg_rankings_data
 )
 
 from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_sst, model_eval_test_para, model_eval_test_sts
@@ -154,7 +157,6 @@ def train_multitask(args):
     sst_train_data, num_labels,para_train_data, sts_train_data = load_multitask_data(args.sst_train,args.para_train,args.sts_train, split ='train')
     sst_dev_data, num_labels,para_dev_data, sts_dev_data = load_multitask_data(args.sst_dev,args.para_dev,args.sts_dev, split ='train')
 
-
     # Filtering out elements in train_data
     if args.balance_sampling != 1:
         sst_train_data, para_train_data, sts_train_data = balance_sampling(sst_train_data, para_train_data, sts_train_data, args)
@@ -178,6 +180,22 @@ def train_multitask(args):
                                       collate_fn=sst_train_data.collate_fn)
     sst_dev_dataloader = DataLoader(sst_dev_data, shuffle=False, batch_size=args.batch_size,
                                     collate_fn=sst_dev_data.collate_fn)
+    
+    # Create dataset for cosine similarity loss
+    cos_sim_dataloader = None
+    if args.cos_sim_loss == 'y':
+        cos_sim_data = load_cos_sim_data(args.cos_sim_train) 
+        cos_sim_data = SentencePairDataset(cos_sim_data, args)
+        cos_sim_dataloader = DataLoader(cos_sim_data, shuffle=False, batch_size=args.batch_size,
+                                    collate_fn=cos_sim_data.collate_fn)
+
+    # Create dataset for negative rankings loss
+    neg_rankings_dataloader = None
+    if args.neg_rankings_loss: 
+        neg_rankings_data = load_neg_rankings_data(args.neg_rankings_train)
+        neg_rankings_data = SentencePairDataset(neg_rankings_data, args)
+        neg_rankings_dataloader = DataLoader(neg_rankings_data, shuffle=False, batch_size=args.batch_size,
+                                    collate_fn=neg_rankings_data.collate_fn)   
 
     # Init model.
     config = {'hidden_dropout_prob': args.hidden_dropout_prob,
@@ -199,7 +217,6 @@ def train_multitask(args):
     config.lora = args.lora
 
     model = MultitaskBERT(config)
-    #print(model.parameters())
     
     # Change model to boosted if flag is on
     if args.boosted_bert == "y":
@@ -207,8 +224,6 @@ def train_multitask(args):
 
     model = model.to(device)
 
-    #implementDoraLayer(model)
-    # mmake sure that the pretrained weights are frozen, adn that only the lora dora params
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
@@ -282,34 +297,44 @@ def train_multitask(args):
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_loss = F.mse_loss(sts_logits.view(-1), sts_labels, reduction='sum') / args.batch_size
-            
-                # Trying Cosine Embedding Loss
-
-                # Map labels with cosine labels -- equivalent is 1, unrelated is -1
-                # Consider just equivalent (label = 4 or 5) or unrelated sentences (0)
-                if args.cos_sim_loss != 'n':
-                    cos_loss, n = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
-                    
-                    # if cos_sim_loss flag is on, replace similarity loss with cosine similarity loss
-                    if args.cos_sim_loss == 'y':
-                        sts_loss = (sts_loss * size + cos_loss) / (size + n)
-                        size += n
-
-                # Integrate Multiple Negatives Ranking Loss
-                if args.neg_ranking_loss != 'n':
-                    mnr_loss, n = model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
-
-                    # if neg_ranking_loss flag is on, replace similarity loss with cosine similarity loss
-                    if args.neg_ranking_loss == 'y':
-                        sts_loss = (sts_loss * size + mnr_loss) / (size + n)
-                        size += n
-
 
                 sts_loss.backward()
                 optimizer.step()
 
                 train_loss += sts_loss.item()
                 num_batches += 1
+
+            if args.cos_sim_loss == 'y':
+                # Train cos sim loss
+                for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = cosine similarity"):
+                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
+                                                                                cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
+                                                                                cos_sim_batch['labels'])
+                    
+                    optimizer.zero_grad()
+
+                    cos_loss = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    cos_loss.backward()
+                    optimizer.step()
+
+                    train_loss += cos_loss.item()
+                    num_batches += 1
+
+            if args.neg_rankings_loss == 'y':
+                # Train neg rankings loss
+                for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = negative rankings loss"):
+                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (neg_rankings_batch['token_ids_1'], neg_rankings_batch['attention_mask_1'],
+                                                                                neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
+                                                                                neg_rankings_batch['labels'])
+                    
+                    optimizer.zero_grad()
+
+                    neg_rankings_loss = model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    neg_rankings_loss.backward()
+                    optimizer.step()
+
+                    train_loss += cos_loss.item()
+                    num_batches += 1
         
         train_loss = train_loss / (num_batches)
         overall_dev_acc = 0
@@ -498,7 +523,7 @@ def get_args():
                         choices=('y', 'n'),
                         default = 'y')
     # 3. Set neg ranking loss for similarity task
-    parser.add_argument("--neg_ranking_loss", type=str,
+    parser.add_argument("--neg_rankings_loss", type=str,
                         choices=('y', 'n'),
                         default = 'n')
     # 4. Balance sampling
@@ -537,6 +562,9 @@ def get_args():
     parser.add_argument("--sts_train", type=str, default="data/sts-train.csv")
     parser.add_argument("--sts_dev", type=str, default="data/sts-dev.csv")
     parser.add_argument("--sts_test", type=str, default="data/sts-test-student.csv")
+
+    parser.add_argument("--cos-sim-train", type=str, default="data/cos-sim-train.csv")
+    parser.add_argument("--neg-rankings-train", type=str, default="data/neg-rankings-train.csv")
 
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--epochs", type=int, default=10)

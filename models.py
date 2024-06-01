@@ -185,37 +185,22 @@ class MultitaskBERT(nn.Module):
     
     '''
     def multiple_negatives_ranking_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
-        #1) Filters out all examples of sentence pairs that aren't equivalent
-        mask = torch.where(sts_labels >= 3.5, True, False)
-        masked_ids_1 = sts_ids_1[mask,:]
-        masked_ids_2 = sts_ids_2[mask,:]
-        masked_mask_1 = sts_mask_1[mask,:]
-        masked_mask_2 = sts_mask_2[mask,:]
+        #1) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
+        emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
+        emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
 
-        #2) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
-        emb_1 = self.bert(masked_ids_1, masked_mask_1)['last_hidden_state'][:,0,:]
-        emb_2 = self.bert(masked_ids_2, masked_mask_2)['last_hidden_state'][:,0,:]
-
-        n = len(masked_ids_1) # Number of equivalent sentences
         similarities = emb_1 @ emb_2.transpose(-1, -2) / torch.linalg.vector_norm(emb_1, dim = -1) / torch.linalg.vector_norm(emb_2, dim = -1)
 
         # 3) Returns cross entropy loss, with correct label being the diagonal
-        labels = torch.arange(n).to(similarities.device)
-        loss = F.cross_entropy(similarities, labels, reduction ='sum')
-        return loss, n
+        labels = torch.arange(len(sts_ids_1)).to(similarities.device)
+        loss = F.cross_entropy(similarities, labels, reduction ='mean')
+        return loss
     
     '''
     Cosine similarity loss function for similarity task.
     '''
     def cos_sim_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
-        mask = torch.where((sts_labels < 1.0) | (sts_labels >= 3.5), True, False)
-        cos_sim_labels = torch.where(sts_labels[mask] < 1.0, -1, 1) # -1 marks unrelated sentences, 1 equivalent sentences
-        cos_sim_ids_1 = sts_ids_1[mask,:]
-        cos_sim_ids_2 = sts_ids_2[mask,:]
-        cos_sim_mask_1 = sts_mask_1[mask,:]
-        cos_sim_mask_2 = sts_mask_2[mask,:]
-        cos_sim_emb_1 = self.bert(cos_sim_ids_1, cos_sim_mask_1)['last_hidden_state'][:,0,:]
-        cos_sim_emb_2 = self.bert(cos_sim_ids_2, cos_sim_mask_2)['last_hidden_state'][:,0,:]
-        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, cos_sim_labels, reduction='sum')
-        n = len(cos_sim_ids_1)
-        return cos_loss, n
+        cos_sim_emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
+        cos_sim_emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
+        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='mean')
+        return cos_loss

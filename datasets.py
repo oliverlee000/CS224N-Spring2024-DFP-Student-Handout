@@ -320,3 +320,67 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
     print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
 
     return sentiment_data, num_labels, paraphrase_data, similarity_data
+
+def load_sts_data(similarity_filename, split="train"):
+    similarity_data = []
+    if split == 'test':
+        with open(similarity_filename, 'r') as fp:
+            for record in csv.DictReader(fp,delimiter = '\t'):
+                sent_id = record['id'].lower().strip()
+                similarity_data.append((preprocess_string(record['sentence1']),
+                                        preprocess_string(record['sentence2'])
+                                        ,sent_id))
+    else:
+        with open(similarity_filename, 'r') as fp:
+            for record in csv.DictReader(fp,delimiter = '\t'):
+                sent_id = record['id'].lower().strip()
+                similarity_data.append((preprocess_string(record['sentence1']),
+                                        preprocess_string(record['sentence2']),
+                                        float(record['similarity']),sent_id))
+
+    print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
+
+    return similarity_data
+
+
+def load_cos_sim_data(similarity_filename, split="train"):
+    similarity_data = []
+    if split == 'test':
+        with open(similarity_filename, 'r') as fp:
+            for record in csv.DictReader(fp,delimiter = ','):
+                sent_id = record['id'].lower().strip()
+                similarity_data.append((preprocess_string(record['sentence1']),
+                                        preprocess_string(record['sentence2'])
+                                        ,sent_id))
+    else:
+        with open(similarity_filename, 'r') as fp:
+            for record in csv.DictReader(fp,delimiter = ','):
+                sent_id = record['id'].lower().strip()
+                similarity_data.append((preprocess_string(record['sentence1']),
+                                        preprocess_string(record['sentence2']),
+                                        float(record['equivalence']),sent_id))
+
+    print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
+
+    return similarity_data
+
+def load_neg_rankings_data(similarity_filename, split="train"):
+    similarity_data = []
+    if split == 'test':
+        with open(similarity_filename, 'r') as fp:
+            for record in csv.DictReader(fp,delimiter = ','):
+                sent_id = record['id'].lower().strip()
+                similarity_data.append((preprocess_string(record['sentence1']),
+                                        preprocess_string(record['sentence2'])
+                                        ,sent_id))
+    else:
+        with open(similarity_filename, 'r') as fp:
+            for record in csv.DictReader(fp,delimiter = ','):
+                sent_id = record['id'].lower().strip()
+                similarity_data.append((preprocess_string(record['sentence1']),
+                                        preprocess_string(record['sentence2']),
+                                        float(record['similarity']),sent_id))
+
+    print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
+
+    return similarity_data
