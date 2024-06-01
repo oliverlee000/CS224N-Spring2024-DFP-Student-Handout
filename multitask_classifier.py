@@ -42,6 +42,7 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
 BERT_HIDDEN_SIZE = 768
+FINE_TUNING_DOWNWEIGHT = 0.2 # downweights cosine similarity and negative ranking loss finetuning
 
 #dimIn = k
 #dimOut = d
@@ -308,7 +309,7 @@ def train_multitask(args):
 
             if args.cos_sim_loss == 'y':
                 # Train cos sim loss
-                for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = cosine similarity"):
+                for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = cosine similarity loss"):
                     sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
                                                                                 cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
                                                                                 cos_sim_batch['labels'])
@@ -322,7 +323,7 @@ def train_multitask(args):
                     optimizer.zero_grad()
 
                     cos_loss = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
-                    cos_loss.backward()
+                    (FINE_TUNING_DOWNWEIGHT * cos_loss).backward()
                     optimizer.step()
 
                     train_loss += cos_loss.item()
@@ -343,8 +344,8 @@ def train_multitask(args):
 
                     optimizer.zero_grad()
 
-                    neg_rankings_loss = model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
-                    neg_rankings_loss.backward()
+                    neg_rankings_loss = model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
+                    (FINE_TUNING_DOWNWEIGHT * neg_rankings_loss).backward()
                     optimizer.step()
 
                     train_loss += neg_rankings_loss.item()
@@ -535,11 +536,11 @@ def get_args():
     # 2. Set cosine similarity loss for similarity task
     parser.add_argument("--cos_sim_loss", type=str,
                         choices=('y', 'n'),
-                        default = 'y')
+                        default = 'n')
     # 3. Set neg ranking loss for similarity task
     parser.add_argument("--neg_rankings_loss", type=str,
                         choices=('y', 'n'),
-                        default = 'n')
+                        default = 'y')
     # 4. Balance sampling
     parser.add_argument("--balance_sampling", type=int,
                         help='choose what factor by which to reduce number of PARA examples',

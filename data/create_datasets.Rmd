@@ -77,8 +77,8 @@ sts_raw <- read.delim("sts-train.csv")
 
 # 1 for equivalent sentences, 0 for non equivalent sentences
 cos_sim <- sts_raw %>%
-  filter(similarity >= 3.5 | similarity < 1.0) %>%
-  mutate(equivalence = ifelse(similarity >= 3.5, 1, -1)) %>%
+  filter(similarity >= 4.0| similarity < 0.8) %>%
+  mutate(equivalence = ifelse(similarity >= 4.0, 1, -1)) %>%
   select(id, sentence1, sentence2, equivalence)
 
 # Make sure that csv is tab delimited

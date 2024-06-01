@@ -201,13 +201,13 @@ class MultitaskBERT(nn.Module):
     3) Returns cross entropy loss, with correct label being the diagonal, as well as number of examples considered
     
     '''
-    def multiple_negatives_ranking_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
+    def multiple_negatives_ranking_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2):
         #1) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
         emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
         emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
 
-        similarities = emb_1 @ emb_2.transpose(-1, -2) / torch.linalg.vector_norm(emb_1, dim = -1) / torch.linalg.vector_norm(emb_2, dim = -1)
-
+        similarities = emb_1 @ emb_2.transpose(-1, -2) \
+            / torch.linalg.vector_norm(emb_1, dim = 1) / torch.linalg.vector_norm(emb_2.transpose(-1, -2), dim = 0)
         # 3) Returns cross entropy loss, with correct label being the diagonal
         labels = torch.arange(len(sts_ids_1)).to(similarities.device)
         loss = F.cross_entropy(similarities, labels, reduction ='mean')
