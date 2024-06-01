@@ -124,7 +124,8 @@ def print_presets(args):
     print("Fine tune mode: " + args.fine_tune_mode)
     print("Ensemble: " + args.boosted_bert)
     print("Lora: " + args.lora)
-    print("Concat embeddings: " + str(args.concat))
+    print("Concat embeddings for PARA: " + str(args.para_concat))
+    print("Concat embeddings for STS: " + str(args.sts_concat))
     print("Cosine similarity loss: + " + args.cos_sim_loss)
     print("Negative rankings loss: " + args.neg_rankings_loss)
     print("SST hidden layers: " + str(args.sst_layers))
@@ -219,7 +220,7 @@ def train_multitask(args):
     
     config.lora = args.lora
 
-    config.concat = args.concat
+    config.para_concat, config.sts_concat = args.para_concat, args.sts_concat
 
     model = MultitaskBERT(config)
     # Change model to boosted if flag is on
@@ -569,9 +570,16 @@ def get_args():
                         default = 'n')
 
     # 8. Concatenate
-    parser.add_argument("--concat",
-                        help='Concatenate output strings of para and sts',
-                        action='store_true')
+    parser.add_argument("--para_concat",
+                        type=str,
+                        help='Concatenate output strings of para',
+                        choices=('y','n'),
+                        default='y')
+    parser.add_argument("--sts_concat",
+                        type=str,
+                        help='Concatenate output strings of sts',
+                        choices=('y','n'),
+                        default='n')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")

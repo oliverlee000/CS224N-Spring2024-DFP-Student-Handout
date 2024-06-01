@@ -149,7 +149,8 @@ class MultitaskBERT(nn.Module):
         
 
         # If concat, then concatenate input embeddings and push into feed forward; else take dot product
-        self.concat = config.concat
+        self.para_concat, self.sts_concat = config.para_concat, config.sts_concat
+
         if self.concat:
             self.para_layers, self.sts_layers = NN(config.num_para_layers, 2*BERT_HIDDEN_SIZE, para_hidden_size, 1), \
                 NN(config.num_sts_layers, 2*BERT_HIDDEN_SIZE, sts_hidden_size, 1)
@@ -166,7 +167,7 @@ class MultitaskBERT(nn.Module):
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
         embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
-        if self.concat:
+        if self.para_concat == 'y':
             # Concanate embeddings together, then return NN output of concatenation
             embeds = torch.cat((embed_1, embed_2), 1)
             output = self.para_layers(embeds)
@@ -180,7 +181,7 @@ class MultitaskBERT(nn.Module):
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
         embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
-        if self.concat:
+        if self.sts_concat == 'y':
             # Concanate embeddings together, then return NN output of concatenation
             embeds = torch.cat((embed_1, embed_2), 1)
             output = self.sts_layers(embeds)
