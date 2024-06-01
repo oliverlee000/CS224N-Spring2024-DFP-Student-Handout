@@ -151,9 +151,11 @@ class MultitaskBERT(nn.Module):
         # If concat, then concatenate input embeddings and push into feed forward; else take dot product
         self.para_concat, self.sts_concat = config.para_concat, config.sts_concat
 
-        if self.concat:
-            self.para_layers, self.sts_layers = NN(config.num_para_layers, 2*BERT_HIDDEN_SIZE, para_hidden_size, 1), \
-                NN(config.num_sts_layers, 2*BERT_HIDDEN_SIZE, sts_hidden_size, 1)
+        if self.para_concat:
+            self.para_layers = NN(config.num_para_layers, 2*BERT_HIDDEN_SIZE, para_hidden_size, 1)
+            
+        if self.sts_concat:
+            self.sts_layers = NN(config.num_sts_layers, 2*BERT_HIDDEN_SIZE, sts_hidden_size, 1)
 
     def forward(self, input_ids, attention_mask):
         output = self.bert(input_ids, attention_mask)
