@@ -42,7 +42,7 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
 BERT_HIDDEN_SIZE = 768
-FINE_TUNING_DOWNWEIGHT = 0.1 # downweights cosine similarity and negative ranking loss finetuning
+FINE_TUNING_DOWNWEIGHT = 0.2 # downweights cosine similarity and negative ranking loss finetuning
 
 #dimIn = k
 #dimOut = d
@@ -120,19 +120,19 @@ Prints presets specified by args
 '''
 def print_presets(args):
     print("Settings:")
+    print("Task: " + args.task)
     print("Fine tune mode: " + args.fine_tune_mode)
     print("Ensemble: " + args.boosted_bert)
     print("Lora: " + args.lora)
+    print("Concat embeddings: " + str(args.concat))
     print("Cosine similarity loss: + " + args.cos_sim_loss)
     print("Negative rankings loss: " + args.neg_rankings_loss)
-    print("Concat: " + str(args.concat))
     print("SST hidden layers: " + str(args.sst_layers))
     print("SST hidden size: " + str(args.sst_hidden_size))
     print("PARA hidden layers: " + str(args.para_layers))
     print("PARA hidden size: " + str(args.para_hidden_size))
     print("STS hidden layers: " + str(args.sts_layers))
     print("STS hidden size: " + str(args.sts_hidden_size))
-    print("Training on task " + args.task + "...")
 
 '''
 If args.balance_sampling != 1: Undersample from para by a factor of args.balance_sampling.
@@ -556,10 +556,10 @@ def get_args():
                         default = 100)
     
     parser.add_argument("--para_hidden_size", type=int,
-                        default = 30)
+                        default = 10)
     
     parser.add_argument("--sts_hidden_size", type=int,
-                        default = 30)
+                        default = 5)
     
     # 7. Lora model=
     parser.add_argument("--lora", type=str,

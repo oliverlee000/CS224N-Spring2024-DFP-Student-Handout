@@ -5,7 +5,7 @@ from base_bert import BertPreTrainedModel
 from utils import *
 import math
 
-LORA_SIZE = 5
+LORA_SIZE = 8
 
 
 # Make sure to keep the pretrained weights; otherwise, LoraDora should decrease parameters
@@ -223,7 +223,7 @@ class LoraBertModel(BertPreTrainedModel):
         self.pooler_af = nn.Tanh()
 
         # Freeze old parameters
-        
+
         self.pooler_dense.weight.requires_grad = False
         self.pooler_dense.bias.requires_grad = False
 
