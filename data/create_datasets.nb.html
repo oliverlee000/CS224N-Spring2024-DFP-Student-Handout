@@ -1845,7 +1845,7 @@ write.table(para_merged, &quot;para-train-merged.csv&quot;,
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBBZGQgY29zaW5lIHNpbWlsYXJpdHkgbG9zcyBkYXRhXG5zdHNfcmF3IDwtIHJlYWQuZGVsaW0oXCJzdHMtdHJhaW4uY3N2XCIpXG5cbiMgMSBmb3IgZXF1aXZhbGVudCBzZW50ZW5jZXMsIDAgZm9yIG5vbiBlcXVpdmFsZW50IHNlbnRlbmNlc1xuY29zX3NpbSA8LSBzdHNfcmF3ICU+JVxuICBmaWx0ZXIoc2ltaWxhcml0eSA+PSAzLjUgfCBzaW1pbGFyaXR5IDwgMS4wKSAlPiVcbiAgbXV0YXRlKGVxdWl2YWxlbmNlID0gaWZlbHNlKHNpbWlsYXJpdHkgPj0gMy41LCAxLCAtMSkpICU+JVxuICBzZWxlY3QoaWQsIHNlbnRlbmNlMSwgc2VudGVuY2UyLCBlcXVpdmFsZW5jZSlcblxuIyBNYWtlIHN1cmUgdGhhdCBjc3YgaXMgdGFiIGRlbGltaXRlZFxud3JpdGUudGFibGUoY29zX3NpbSwgXCJjb3Mtc2ltLXRyYWluLmNzdlwiLCBcbiAgICAgICAgICAgIHJvdy5uYW1lcyA9IEZBTFNFLCBzZXA9XCJcXHRcIilcblxuYGBgIn0= -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBBZGQgY29zaW5lIHNpbWlsYXJpdHkgbG9zcyBkYXRhXG5zdHNfcmF3IDwtIHJlYWQuZGVsaW0oXCJzdHMtdHJhaW4uY3N2XCIpXG5cbiMgMSBmb3IgZXF1aXZhbGVudCBzZW50ZW5jZXMsIDAgZm9yIG5vbiBlcXVpdmFsZW50IHNlbnRlbmNlc1xuY29zX3NpbSA8LSBzdHNfcmF3ICU+JVxuICBmaWx0ZXIoc2ltaWxhcml0eSA+PSAzLjUgfCBzaW1pbGFyaXR5IDwgMS4wKSAlPiVcbiAgbXV0YXRlKGVxdWl2YWxlbmNlID0gaWZlbHNlKHNpbWlsYXJpdHkgPj0gMy41LCAxLCAtMSkpICU+JVxuICBzZWxlY3QoaWQsIHNlbnRlbmNlMSwgc2VudGVuY2UyLCBlcXVpdmFsZW5jZSlcblxuIyBNYWtlIHN1cmUgdGhhdCBjc3YgaXMgdGFiIGRlbGltaXRlZFxud3JpdGUuY3N2KGNvc19zaW0sIFwiY29zLXNpbS10cmFpbi5jc3ZcIiwgXG4gICAgICAgICAgICByb3cubmFtZXMgPSBGQUxTRSwgc2VwPVwiXFx0XCIpXG5gYGAifQ== -->
 <pre class="r"><code># Add cosine similarity loss data
 sts_raw &lt;- read.delim(&quot;sts-train.csv&quot;)
 
@@ -1856,15 +1856,18 @@ cos_sim &lt;- sts_raw %&gt;%
   select(id, sentence1, sentence2, equivalence)
 
 # Make sure that csv is tab delimited
-write.table(cos_sim, &quot;cos-sim-train.csv&quot;, 
-            row.names = FALSE, sep=&quot;\t&quot;)
-</code></pre>
+write.csv(cos_sim, &quot;cos-sim-train.csv&quot;, 
+            row.names = FALSE, sep=&quot;\t&quot;)</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiV2FybmluZyBpbiB3cml0ZS5jc3YoY29zX3NpbSwgXCJjb3Mtc2ltLXRyYWluLmNzdlwiLCByb3cubmFtZXMgPSBGQUxTRSwgc2VwID0gXCJcXHRcIikgOlxuICBhdHRlbXB0IHRvIHNldCAnc2VwJyBpZ25vcmVkXG4ifQ== -->
+<pre><code>Warning in write.csv(cos_sim, &quot;cos-sim-train.csv&quot;, row.names = FALSE, sep = &quot;\t&quot;) :
+  attempt to set &#39;sep&#39; ignored</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBBZGQgbmVnYXRpdmUgcmFua2luZ3MgbG9zcyBkYXRhXG5zdHNfcmF3IDwtIHJlYWQuZGVsaW0oXCJzdHMtdHJhaW4uY3N2XCIpXG5cbm5lZ19yYW5raW5ncyA8LSBzdHNfcmF3ICU+JVxuICBmaWx0ZXIoc2ltaWxhcml0eSA+PSAzLjUpICU+JVxuICBzZWxlY3QoaWQsIHNlbnRlbmNlMSwgc2VudGVuY2UyLCBzaW1pbGFyaXR5KVxuXG4jIE1ha2Ugc3VyZSB0aGF0IGNzdiBpcyB0YWIgZGVsaW1pdGVkXG53cml0ZS50YWJsZShuZWdfcmFua2luZ3MsIFwibmVnLXJhbmtpbmdzLXRyYWluLmNzdlwiLCBcbiAgICAgICAgICAgIHJvdy5uYW1lcyA9IEZBTFNFLCBzZXA9XCJcXHRcIilcblxuYGBgIn0= -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBBZGQgbmVnYXRpdmUgcmFua2luZ3MgbG9zcyBkYXRhXG5zdHNfcmF3IDwtIHJlYWQuZGVsaW0oXCJzdHMtdHJhaW4uY3N2XCIpXG5cbm5lZ19yYW5raW5ncyA8LSBzdHNfcmF3ICU+JVxuICBmaWx0ZXIoc2ltaWxhcml0eSA+PSAzLjUpICU+JVxuICBzZWxlY3QoaWQsIHNlbnRlbmNlMSwgc2VudGVuY2UyLCBzaW1pbGFyaXR5KVxuXG4jIE1ha2Ugc3VyZSB0aGF0IGNzdiBpcyB0YWIgZGVsaW1pdGVkXG53cml0ZS5jc3YobmVnX3JhbmtpbmdzLCBcIm5lZy1yYW5raW5ncy10cmFpbi5jc3ZcIiwgXG4gICAgICAgICAgICByb3cubmFtZXMgPSBGQUxTRSwgc2VwPVwiXFx0XCIpXG5gYGAifQ== -->
 <pre class="r"><code># Add negative rankings loss data
 sts_raw &lt;- read.delim(&quot;sts-train.csv&quot;)
 
@@ -1873,10 +1876,13 @@ neg_rankings &lt;- sts_raw %&gt;%
   select(id, sentence1, sentence2, similarity)
 
 # Make sure that csv is tab delimited
-write.table(neg_rankings, &quot;neg-rankings-train.csv&quot;, 
-            row.names = FALSE, sep=&quot;\t&quot;)
-</code></pre>
+write.csv(neg_rankings, &quot;neg-rankings-train.csv&quot;, 
+            row.names = FALSE, sep=&quot;\t&quot;)</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiV2FybmluZyBpbiB3cml0ZS5jc3YobmVnX3JhbmtpbmdzLCBcIm5lZy1yYW5raW5ncy10cmFpbi5jc3ZcIiwgcm93Lm5hbWVzID0gRkFMU0UsICA6XG4gIGF0dGVtcHQgdG8gc2V0ICdzZXAnIGlnbm9yZWRcbiJ9 -->
+<pre><code>Warning in write.csv(neg_rankings, &quot;neg-rankings-train.csv&quot;, row.names = FALSE,  :
+  attempt to set &#39;sep&#39; ignored</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p>Add a new chunk by clicking the <em>Insert Chunk</em> button on the

@@ -5,9 +5,8 @@ from base_bert import BertPreTrainedModel
 from utils import *
 import math
 
-LORA_SIZE = 10
+LORA_SIZE = 5
 
-# To test, just use 10 examples, and see whether the training loss goes to 0. If it does, then the model is training, and everything is going ok
 
 # Make sure to keep the pretrained weights; otherwise, LoraDora should decrease parameters
 
