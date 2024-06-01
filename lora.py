@@ -103,9 +103,9 @@ class LoraBertSelfAttention(nn.Module):
     # using self.transform (more details inside the function).
     # Size of *_layer is [bs, num_attention_heads, seq_len, attention_head_size].
     # Dora transform key, value, query
-    key = lora_dense(self.key, self.key_A, self.key_B)
-    value = lora_dense(self.value, self.value_A, self.value_B)
-    query = lora_dense(self.query, self.query_A, self.query_B)
+    key = lambda x: self.key(x) + self.key_B(self.key_A(x))
+    value = lambda x: self.value(x) + self.value_B(self.value_A(x))
+    query = lambda x: self.query(x) + self.query_B(self.query_A(x))
 
     key_layer = self.transform(hidden_states, key)
     value_layer = self.transform(hidden_states, value)
@@ -175,9 +175,9 @@ class LoraBertLayer(nn.Module):
     4. An add-norm operation that takes the input and output of the feed forward layer.
     """
     # Lora transform
-    attention_dense = lora_dense(self.attention_dense, self.attention_dense_A, self.attention_dense_B)
-    interm_dense = lora_dense(self.interm_dense, self.interm_dense_A, self.interm_dense_B)
-    out_dense = lora_dense(self.out_dense, self.out_dense_A, self.out_dense_B)
+    attention_dense = lambda x: self.attention_dense(x) + self.attention_dense_B(self.attention_dense_A(x))
+    interm_dense = lambda x: self.interm_dense(x) + self.interm_dense_B(self.interm_dense_A(x))
+    out_dense = lambda x: self.out_dense(x) + self.out_dense_B(self.out_dense_A(x))
 
 
     attn_output = self.self_attention(hidden_states, attention_mask)
@@ -274,8 +274,8 @@ class LoraBertModel(BertPreTrainedModel):
     attention_mask: same size as input_ids, 1 represents non-padding tokens, 0 represents padding tokens
     """
     # Dora transform pooler dense
-    pooler_dense = lora_dense(self.pooler_dense, self.pooler_dense_A, self.pooler_dense_B)
-
+    pooler_dense = lambda x: self.pooler_dense(x) + self.pooler_dense_B(self.pooler_dense_A(x))
+ 
     # Get the embedding for each input token.
     embedding_output = self.embed(input_ids=input_ids)
 

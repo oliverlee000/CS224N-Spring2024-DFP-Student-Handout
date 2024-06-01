@@ -7,7 +7,7 @@ from utils import *
 
 from torch.utils.data import DataLoader
 from bert import BertModel
-from new_lora import LoraBertModel
+from lora import LoraBertModel
 
 BERT_HIDDEN_SIZE = 768
 N_SENTIMENT_CLASSES = 5
