@@ -42,7 +42,7 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
 BERT_HIDDEN_SIZE = 768
-FINE_TUNING_DOWNWEIGHT = 0.2 # downweights cosine similarity and negative ranking loss finetuning
+FINE_TUNING_DOWNWEIGHT = 0.1 # downweights cosine similarity and negative ranking loss finetuning
 
 #dimIn = k
 #dimOut = d
