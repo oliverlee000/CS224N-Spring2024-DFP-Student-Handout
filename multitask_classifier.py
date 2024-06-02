@@ -279,8 +279,6 @@ def train_multitask(args):
                 neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
                 neg_rankings_loss.backward()
                 optimizer.step()
-
-                train_loss += neg_rankings_loss.item()
                 num_batches += 1
 
     # Run for the specified number of epochs.
