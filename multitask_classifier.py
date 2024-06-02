@@ -122,12 +122,14 @@ def print_presets(args):
     print("Settings:")
     print("Task: " + args.task)
     print("Fine tune mode: " + args.fine_tune_mode)
+    print("Num of epochs: " + str(args.epochs))
+    print("Num of epochs for extra loss functions: " + str(args.epochs_ft))
     print("Balance sampling factor: " + str(args.balance_sampling))
     print("Ensembling: " + args.ensembling)
     print("Lora: " + args.lora)
     print("Lora size: " + str(args.lora_size))
-    print("Cosine similarity loss: " + args.cos_sim_loss)
-    print("Negative rankings loss: " + args.neg_rankings_loss)
+    print("Cosine similarity loss fine tuning: " + args.cos_sim_loss)
+    print("Negative rankings loss fine tuning: " + args.neg_rankings_loss)
     print("SST hidden layers: " + str(args.sst_layers))
     print("SST hidden size: " + str(args.sst_hidden_size))
     print("PARA hidden layers: " + str(args.para_layers))
@@ -237,6 +239,50 @@ def train_multitask(args):
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
 
+    # Run extra fine tuning loss functions for bert embeddings:
+    for epoch in range(args.epochs_ft):
+        model.train()
+        if args.cos_sim_loss == 'y':
+                # Train cos sim loss
+                for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
+                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
+                                                                                cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
+                                                                                cos_sim_batch['labels'])
+                    
+                    sts_ids_1 = sts_ids_1.to(device)
+                    sts_mask_1 = sts_mask_1.to(device)
+                    sts_ids_2 = sts_ids_2.to(device)
+                    sts_mask_2 = sts_mask_2.to(device)
+                    sts_labels = sts_labels.to(device).float().view(-1)
+
+                    optimizer.zero_grad()
+
+                    cos_loss = FINE_TUNING_DOWNWEIGHT * model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    cos_loss.backward()
+                    optimizer.step()
+
+        if args.neg_rankings_loss == 'y':
+            # Train neg rankings loss
+            for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"Epoch {epoch+1}/{args.epochs_ft}, Task = negative rankings loss"):
+                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (neg_rankings_batch['token_ids_1'], neg_rankings_batch['attention_mask_1'],
+                                                                            neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
+                                                                            neg_rankings_batch['labels'])
+                
+                sts_ids_1 = sts_ids_1.to(device)
+                sts_mask_1 = sts_mask_1.to(device)
+                sts_ids_2 = sts_ids_2.to(device)
+                sts_mask_2 = sts_mask_2.to(device)
+                sts_labels = sts_labels.to(device).float().view(-1)
+
+                optimizer.zero_grad()
+
+                neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
+                neg_rankings_loss.backward()
+                optimizer.step()
+
+                train_loss += neg_rankings_loss.item()
+                num_batches += 1
+
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
         model.train()
@@ -313,50 +359,6 @@ def train_multitask(args):
 
                 train_loss += sts_loss.item()
                 num_batches += 1
-
-            if args.cos_sim_loss == 'y':
-                # Train cos sim loss
-                for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = cosine similarity loss"):
-                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
-                                                                                cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
-                                                                                cos_sim_batch['labels'])
-                    
-                    sts_ids_1 = sts_ids_1.to(device)
-                    sts_mask_1 = sts_mask_1.to(device)
-                    sts_ids_2 = sts_ids_2.to(device)
-                    sts_mask_2 = sts_mask_2.to(device)
-                    sts_labels = sts_labels.to(device).float().view(-1)
-
-                    optimizer.zero_grad()
-
-                    cos_loss = FINE_TUNING_DOWNWEIGHT * model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
-                    cos_loss.backward()
-                    optimizer.step()
-
-                    train_loss += cos_loss.item()
-                    num_batches += 1
-
-            if args.neg_rankings_loss == 'y':
-                # Train neg rankings loss
-                for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = negative rankings loss"):
-                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (neg_rankings_batch['token_ids_1'], neg_rankings_batch['attention_mask_1'],
-                                                                                neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
-                                                                                neg_rankings_batch['labels'])
-                    
-                    sts_ids_1 = sts_ids_1.to(device)
-                    sts_mask_1 = sts_mask_1.to(device)
-                    sts_ids_2 = sts_ids_2.to(device)
-                    sts_mask_2 = sts_mask_2.to(device)
-                    sts_labels = sts_labels.to(device).float().view(-1)
-
-                    optimizer.zero_grad()
-
-                    neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
-                    neg_rankings_loss.backward()
-                    optimizer.step()
-
-                    train_loss += neg_rankings_loss.item()
-                    num_batches += 1
         
         train_loss = train_loss / (num_batches)
         overall_dev_acc = 0
@@ -529,36 +531,47 @@ def get_args():
 
     # 1a. Set num linear layers for sst
     parser.add_argument("--sst_layers", type=int,
+                        help='num linear layers for sst',
                         default = 3)
     
     # 1b. Set num linear layers for para
     parser.add_argument("--para_layers", type=int,
+                        help='num linear layers for para',
                         default= 2)
     
     # 1c. Set num linear layers for sts
     parser.add_argument("--sts_layers", type = int,
+                        help='num linear layers for sts',
                         default = 2)
     
 
     # 2. Set cosine similarity loss for similarity task
     parser.add_argument("--cos_sim_loss", type=str,
                         choices=('y', 'n'),
+                        help='cosine similarity loss for embeddings',
                         default = 'n')
     # 3. Set neg ranking loss for similarity task
     parser.add_argument("--neg_rankings_loss", type=str,
+                        help='neg ranking loss for embeddings',
                         choices=('y', 'n'),
                         default = 'y')
-    # 4. Balance sampling
+    
+    #4. Num of epochs for cosine similarity loss and neg ranking loss
+    parser.add_argument("--epochs_ft", type=int,
+                        help = 'num of epochs for cosine similarity loss and neg ranking loss',
+                        default = 1)
+
+    # 5. Balance sampling
     parser.add_argument("--balance_sampling", type=int,
                         help='choose what factor by which to reduce number of PARA examples',
                         default = 1)
     
-    # 5. Boosted bert
+    # 6. Boosted bert
     parser.add_argument("--ensembling", type=str,
                         choices=('y', 'n'),
                         default = 'n')
     
-    # 6. Hidden size for linear layers
+    # 7. Hidden size for linear layers
     parser.add_argument("--sst_hidden_size", type=int,
                         default = 100)
     
@@ -568,7 +581,7 @@ def get_args():
     parser.add_argument("--sts_hidden_size", type=int,
                         default = 5)
     
-    # 7. Lora model=
+    # 8. Lora model
     parser.add_argument("--lora", type=str,
                         choices=('y', 'n'),
                         default = 'n')
@@ -576,15 +589,15 @@ def get_args():
     parser.add_argument("--lora_size", type=int,
                         default = 50)
 
-    # 8. Concatenate
+    # 9. Concatenate embeddings for para and sts
     parser.add_argument("--para_concat",
                         type=str,
-                        help='Concatenate output strings of para',
+                        help='Concatenate bert embeddings for para',
                         choices=('y','n'),
                         default='y')
     parser.add_argument("--sts_concat",
                         type=str,
-                        help='Concatenate output strings of sts',
+                        help='Concatenate bert embeddings for sts',
                         choices=('y','n'),
                         default='n')
 
