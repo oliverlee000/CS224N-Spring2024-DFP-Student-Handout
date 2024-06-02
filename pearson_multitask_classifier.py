@@ -77,12 +77,16 @@ class LoRADoRA(nn.Module):
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
 
-'''
-Returns pearson coefficient loss'''
-def pearson_coefficient_loss(output, target):
-    vx = output - torch.mean(output)
-    vy = target - torch.mean(target)
-    return vx * vy * torch.rsqrt(torch.sum(vx ** 2)) * torch.rsqrt(torch.sum(vy ** 2))
+
+def implementDoraLayer(model):
+    for name, module in model.named_children():
+        if isinstance(module, nn.Linear):
+            dimIn = module.in_features
+            dimOut = module.out_features
+            #model.add_module(name, LoRADoRA(dimOut, dimIn, rank=4, bias=module.bias, weight=module.weight))
+            setattr(model, name, LoRADoRA(dimOut=dimOut, dimIn=dimIn, rank=4, bias=module.bias.data.clone(), weight=module.weight.data.clone()))
+        else:
+            implementDoraLayer(module)
 
 TQDM_DISABLE=False
 
@@ -488,7 +492,8 @@ def test_multitask(args):
             dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids \
                 = model_eval_para(para_dev_dataloader, model, device)
 
-            test_para_y_pred, test_para_sent_ids = \
+            test_sst_y_pred, \
+                test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_para(para_test_dataloader, model, device)
 
             with open(args.para_dev_out, "w+") as f:

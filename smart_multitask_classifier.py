@@ -14,7 +14,7 @@ writes all required submission files.
 
 import random, numpy as np, argparse
 from types import SimpleNamespace
-
+from smart_pytorch import SMARTLoss, kl_loss, sym_kl_loss
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -77,12 +77,16 @@ class LoRADoRA(nn.Module):
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
 
-'''
-Returns pearson coefficient loss'''
-def pearson_coefficient_loss(output, target):
-    vx = output - torch.mean(output)
-    vy = target - torch.mean(target)
-    return vx * vy * torch.rsqrt(torch.sum(vx ** 2)) * torch.rsqrt(torch.sum(vy ** 2))
+
+def implementDoraLayer(model):
+    for name, module in model.named_children():
+        if isinstance(module, nn.Linear):
+            dimIn = module.in_features
+            dimOut = module.out_features
+            #model.add_module(name, LoRADoRA(dimOut, dimIn, rank=4, bias=module.bias, weight=module.weight))
+            setattr(model, name, LoRADoRA(dimOut=dimOut, dimIn=dimIn, rank=4, bias=module.bias.data.clone(), weight=module.weight.data.clone()))
+        else:
+            implementDoraLayer(module)
 
 TQDM_DISABLE=False
 
@@ -118,23 +122,18 @@ def print_presets(args):
     print("Settings:")
     print("Task: " + args.task)
     print("Fine tune mode: " + args.fine_tune_mode)
-    print("Num of epochs: " + str(args.epochs))
-    print("Num of epochs for extra loss functions: " + str(args.epochs_ft))
-    print("Balance sampling factor: " + str(args.balance_sampling))
-    print("Ensembling: " + args.ensembling)
+    print("Ensemble: " + args.boosted_bert)
     print("Lora: " + args.lora)
-    print("Lora size: " + str(args.lora_size))
-    print("Cosine similarity loss fine tuning: " + args.cos_sim_loss)
-    print("Negative rankings loss fine tuning: " + args.neg_rankings_loss)
+    print("Concat embeddings for PARA: " + str(args.para_concat))
+    print("Concat embeddings for STS: " + str(args.sts_concat))
+    print("Cosine similarity loss: + " + args.cos_sim_loss)
+    print("Negative rankings loss: " + args.neg_rankings_loss)
     print("SST hidden layers: " + str(args.sst_layers))
     print("SST hidden size: " + str(args.sst_hidden_size))
     print("PARA hidden layers: " + str(args.para_layers))
     print("PARA hidden size: " + str(args.para_hidden_size))
-    print("Concat embeddings for PARA: " + str(args.para_concat))
     print("STS hidden layers: " + str(args.sts_layers))
     print("STS hidden size: " + str(args.sts_hidden_size))
-    print("Concat embeddings for STS: " + str(args.sts_concat))
-    
 
 '''
 If args.balance_sampling != 1: Undersample from para by a factor of args.balance_sampling.
@@ -148,6 +147,8 @@ def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
     return sst_train_data, para_train_data, sts_train_data
 
 
+from smart_pytorch import SMARTLoss, kl_loss, sym_kl_loss
+
 def train_multitask(args):
     '''Train MultitaskBERT.
 
@@ -156,7 +157,7 @@ def train_multitask(args):
     look at test_multitask below to see how you can use the custom torch `Dataset`s
     in datasets.py to load in examples from the Quora and SemEval datasets.
     '''
-    device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() and args.use_gpu else 'cpu')
 
     # Create the data and its corresponding datasets and dataloader.
     sst_train_data, num_labels,para_train_data, sts_train_data = load_multitask_data(args.sst_train,args.para_train,args.sts_train, split ='train')
@@ -220,65 +221,25 @@ def train_multitask(args):
         args.para_hidden_size, args.sts_hidden_size
     
     config.lora = args.lora
-    config.lora_size = args.lora_size
 
     config.para_concat, config.sts_concat = args.para_concat, args.sts_concat
 
     model = MultitaskBERT(config)
-    # Change model to ensembling if flag is on
-    if args.ensembling == "y":
+    # Change model to boosted if flag is on
+    if args.boosted_bert == "y":
         model = BoostedBERT(config)
 
     model = model.to(device)
 
+    print("fucking hell")
+    eval_smart_fn = lambda x : model.predict_similarity_with_emb(x[0], x[1]) #no idea what to put here, create anonymous func tho
+    print(eval_smart_fn)
+    smart_loss_fn = SMARTLoss(eval_fn=eval_smart_fn, loss_fn=kl_loss)
+    print("got past sad land")
+
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
-
-    # Run extra fine tuning loss functions for bert embeddings:
-    if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
-        print("Pretraining on additional loss functions.")
-    for epoch in range(args.epochs_ft):
-        model.train()
-        if args.fine_tune_mode == 'full-model' and args.cos_sim_loss == 'y':
-            # Train cos sim loss
-            for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"PREpoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
-                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
-                                                                            cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
-                                                                            cos_sim_batch['labels'])
-                
-                sts_ids_1 = sts_ids_1.to(device)
-                sts_mask_1 = sts_mask_1.to(device)
-                sts_ids_2 = sts_ids_2.to(device)
-                sts_mask_2 = sts_mask_2.to(device)
-                sts_labels = sts_labels.to(device).float().view(-1)
-
-                optimizer.zero_grad()
-
-                cos_loss = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels) / args.batch_size
-                cos_loss.backward()
-                optimizer.step()
-
-        if args.fine_tune_mode == 'full-model' and args.neg_rankings_loss == 'y':
-            # Train neg rankings loss
-            for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"PREpoch {epoch+1}/{args.epochs_ft}, Task = negative rankings loss"):
-                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (neg_rankings_batch['token_ids_1'], neg_rankings_batch['attention_mask_1'],
-                                                                            neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
-                                                                            neg_rankings_batch['labels'])
-                
-                sts_ids_1 = sts_ids_1.to(device)
-                sts_mask_1 = sts_mask_1.to(device)
-                sts_ids_2 = sts_ids_2.to(device)
-                sts_mask_2 = sts_mask_2.to(device)
-                sts_labels = sts_labels.to(device).float().view(-1)
-
-                optimizer.zero_grad()
-
-                neg_rankings_loss = model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2) / args.batch_size
-                neg_rankings_loss.backward()
-                optimizer.step()
-    if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
-        print("Pretraining over.")
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
@@ -346,16 +307,69 @@ def train_multitask(args):
                 optimizer.zero_grad()
 
                 # Normal loss
-
-                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                sts_logits = torch.squeeze(sts_logits, 1)
+            
+                emb1=model(sts_ids_1, sts_mask_1)[:,0,:]
+                emb2=model(sts_ids_2, sts_mask_2)[:,0,:]
+                sts_logits = model.predict_similarity_with_emb(emb1,emb2)
                 sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
+                print("sts logits: ", sts_logits)
+                print("sts logits shape: ", sts_logits.shape,sts_logits[1].shape )
+                sts_logits = torch.squeeze(sts_logits, 1)
 
-                sts_loss.backward()
+                smart_loss = smart_loss_fn((emb1, emb2), state=sts_labels)
+                print("smart loss : ", smart_loss.shape)
+                total_loss = sts_loss + args.smart_weight * smart_loss
+
+
+                total_loss.backward()
                 optimizer.step()
 
-                train_loss += sts_loss.item()
+                train_loss += total_loss.item()
                 num_batches += 1
+
+            if args.cos_sim_loss == 'y':
+                # Train cos sim loss
+                for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = cosine similarity loss"):
+                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
+                                                                                cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
+                                                                                cos_sim_batch['labels'])
+                    
+                    sts_ids_1 = sts_ids_1.to(device)
+                    sts_mask_1 = sts_mask_1.to(device)
+                    sts_ids_2 = sts_ids_2.to(device)
+                    sts_mask_2 = sts_mask_2.to(device)
+                    sts_labels = sts_labels.to(device).float().view(-1)
+
+                    optimizer.zero_grad()
+
+                    cos_loss = FINE_TUNING_DOWNWEIGHT * model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                    cos_loss.backward()
+                    optimizer.step()
+
+                    train_loss += cos_loss.item()
+                    num_batches += 1
+
+            if args.neg_rankings_loss == 'y':
+                # Train neg rankings loss
+                for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = negative rankings loss"):
+                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (neg_rankings_batch['token_ids_1'], neg_rankings_batch['attention_mask_1'],
+                                                                                neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
+                                                                                neg_rankings_batch['labels'])
+                    
+                    sts_ids_1 = sts_ids_1.to(device)
+                    sts_mask_1 = sts_mask_1.to(device)
+                    sts_ids_2 = sts_ids_2.to(device)
+                    sts_mask_2 = sts_mask_2.to(device)
+                    sts_labels = sts_labels.to(device).float().view(-1)
+
+                    optimizer.zero_grad()
+
+                    neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
+                    neg_rankings_loss.backward()
+                    optimizer.step()
+
+                    train_loss += neg_rankings_loss.item()
+                    num_batches += 1
         
         train_loss = train_loss / (num_batches)
         overall_dev_acc = 0
@@ -378,6 +392,8 @@ def train_multitask(args):
         print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
 
 
+
+
 def test_multitask(args):
     '''Test and save predictions on the dev and test sets of all three tasks.'''
     with torch.no_grad():
@@ -386,7 +402,7 @@ def test_multitask(args):
         config = saved['model_config']
 
         model = MultitaskBERT(config)
-        if args.ensembling == 'y':
+        if args.boosted_bert == 'y':
             model = BoostedBERT(config)
         model.load_state_dict(saved['model'])
         model = model.to(device)
@@ -488,7 +504,8 @@ def test_multitask(args):
             dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids \
                 = model_eval_para(para_dev_dataloader, model, device)
 
-            test_para_y_pred, test_para_sent_ids = \
+            test_sst_y_pred, \
+                test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_para(para_test_dataloader, model, device)
 
             with open(args.para_dev_out, "w+") as f:
@@ -527,47 +544,36 @@ def get_args():
 
     # 1a. Set num linear layers for sst
     parser.add_argument("--sst_layers", type=int,
-                        help='num linear layers for sst',
-                        default = 4)
+                        default = 3)
     
     # 1b. Set num linear layers for para
     parser.add_argument("--para_layers", type=int,
-                        help='num linear layers for para',
                         default= 2)
     
     # 1c. Set num linear layers for sts
     parser.add_argument("--sts_layers", type = int,
-                        help='num linear layers for sts',
                         default = 2)
     
 
     # 2. Set cosine similarity loss for similarity task
     parser.add_argument("--cos_sim_loss", type=str,
                         choices=('y', 'n'),
-                        help='cosine similarity loss for embeddings',
                         default = 'n')
     # 3. Set neg ranking loss for similarity task
     parser.add_argument("--neg_rankings_loss", type=str,
-                        help='neg ranking loss for embeddings',
                         choices=('y', 'n'),
                         default = 'y')
-    
-    #4. Num of epochs for cosine similarity loss and neg ranking loss
-    parser.add_argument("--epochs_ft", type=int,
-                        help = 'num of epochs for cosine similarity loss and neg ranking loss',
-                        default = 1)
-
-    # 5. Balance sampling
+    # 4. Balance sampling
     parser.add_argument("--balance_sampling", type=int,
                         help='choose what factor by which to reduce number of PARA examples',
                         default = 1)
     
-    # 6. Boosted bert
-    parser.add_argument("--ensembling", type=str,
+    # 5. Boosted bert
+    parser.add_argument("--boosted_bert", type=str,
                         choices=('y', 'n'),
                         default = 'n')
     
-    # 7. Hidden size for linear layers
+    # 6. Hidden size for linear layers
     parser.add_argument("--sst_hidden_size", type=int,
                         default = 100)
     
@@ -577,25 +583,24 @@ def get_args():
     parser.add_argument("--sts_hidden_size", type=int,
                         default = 5)
     
-    # 8. Lora model
+    # 7. Lora model=
     parser.add_argument("--lora", type=str,
                         choices=('y', 'n'),
                         default = 'n')
-    
-    parser.add_argument("--lora_size", type=int,
-                        default = 50)
 
-    # 9. Concatenate embeddings for para and sts
+    # 8. Concatenate
     parser.add_argument("--para_concat",
                         type=str,
-                        help='Concatenate bert embeddings for para',
+                        help='Concatenate output strings of para',
                         choices=('y','n'),
                         default='y')
     parser.add_argument("--sts_concat",
                         type=str,
-                        help='Concatenate bert embeddings for sts',
+                        help='Concatenate output strings of sts',
                         choices=('y','n'),
                         default='n')
+    #9 smart
+    parser.add_argument("--smart_weight", type=float, default=0.5, help="Weight for SMART regularization loss")
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
@@ -631,6 +636,7 @@ def get_args():
     parser.add_argument("--batch_size", help='sst: 64, cfimdb: 8 can fit a 12GB GPU', type=int, default=8)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
     parser.add_argument("--lr", type=float, help="learning rate", default=1e-5)
+    parser.add_argument("--use_smart", type=str, choices=('y', 'n'), default='y')
 
     args = parser.parse_args()
     return args
@@ -640,7 +646,6 @@ if __name__ == "__main__":
     args = get_args()
     args.filepath = f'{args.fine_tune_mode}-{args.epochs}-{args.lr}-multitask.pt' # Save path.
     seed_everything(args.seed)  # Fix the seed for reproducibility.
-    print_presets(args)
     train_multitask(args)
     test_multitask(args)
     print_presets(args)
