@@ -135,7 +135,7 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = True
         # Create LoraBertModel if lora flag is on
         if config.lora == 'y':
-            self.bert = LoraBertModel.from_pretrained('bert-base-uncased')
+            self.bert = LoraBertModel.from_pretrained('bert-base-uncased', lora_size=config.lora_size)
             # Training parameters are by default marked true, so turn off in fine tune mode is last linear layer
             for param in self.bert.parameters():
                 if config.fine_tune_mode == 'last-linear-layer':
@@ -151,10 +151,10 @@ class MultitaskBERT(nn.Module):
         # If concat, then concatenate input embeddings and push into feed forward; else take dot product
         self.para_concat, self.sts_concat = config.para_concat, config.sts_concat
 
-        if self.para_concat:
+        if self.para_concat == 'y':
             self.para_layers = NN(config.num_para_layers, 2*BERT_HIDDEN_SIZE, para_hidden_size, 1)
-            
-        if self.sts_concat:
+
+        if self.sts_concat == 'y':
             self.sts_layers = NN(config.num_sts_layers, 2*BERT_HIDDEN_SIZE, sts_hidden_size, 1)
 
     def forward(self, input_ids, attention_mask):
@@ -177,7 +177,7 @@ class MultitaskBERT(nn.Module):
         else:
             output_1 = self.para_layers(embed_1)
             output_2 = self.para_layers(embed_2)
-            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
+            output = F.cosine_similarity(output_1, output_2).view(-1, 1)
             return output
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
@@ -191,7 +191,7 @@ class MultitaskBERT(nn.Module):
         else:
             output_1 = self.sts_layers(embed_1)
             output_2 = self.sts_layers(embed_2)
-            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
+            output = F.cosine_similarity(output_1, output_2).view(-1, 1)
             return output
 
 
@@ -213,7 +213,7 @@ class MultitaskBERT(nn.Module):
             / torch.linalg.vector_norm(emb_1, dim = 1) / torch.linalg.vector_norm(emb_2.transpose(-1, -2), dim = 0)
         # 3) Returns cross entropy loss, with correct label being the diagonal
         labels = torch.arange(len(sts_ids_1)).to(similarities.device)
-        loss = F.cross_entropy(similarities, labels, reduction ='mean')
+        loss = F.cross_entropy(similarities, labels, reduction ='sum')
         return loss
     
 
@@ -338,7 +338,7 @@ class MultitaskBERT(nn.Module):
     def cos_sim_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
         cos_sim_emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
         cos_sim_emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
-        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='mean')
+        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='sum')
         return cos_loss
     def get_embeddings(self, input_ids, attention_mask):
         return self.bert(input_ids=input_ids, attention_mask=attention_mask)[0]
