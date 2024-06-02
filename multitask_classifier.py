@@ -243,23 +243,23 @@ def train_multitask(args):
     for epoch in range(args.epochs_ft):
         model.train()
         if args.cos_sim_loss == 'y':
-                # Train cos sim loss
-                for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
-                    sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
-                                                                                cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
-                                                                                cos_sim_batch['labels'])
-                    
-                    sts_ids_1 = sts_ids_1.to(device)
-                    sts_mask_1 = sts_mask_1.to(device)
-                    sts_ids_2 = sts_ids_2.to(device)
-                    sts_mask_2 = sts_mask_2.to(device)
-                    sts_labels = sts_labels.to(device).float().view(-1)
+            # Train cos sim loss
+            for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
+                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
+                                                                            cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
+                                                                            cos_sim_batch['labels'])
+                
+                sts_ids_1 = sts_ids_1.to(device)
+                sts_mask_1 = sts_mask_1.to(device)
+                sts_ids_2 = sts_ids_2.to(device)
+                sts_mask_2 = sts_mask_2.to(device)
+                sts_labels = sts_labels.to(device).float().view(-1)
 
-                    optimizer.zero_grad()
+                optimizer.zero_grad()
 
-                    cos_loss = FINE_TUNING_DOWNWEIGHT * model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
-                    cos_loss.backward()
-                    optimizer.step()
+                cos_loss = FINE_TUNING_DOWNWEIGHT * model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels)
+                cos_loss.backward()
+                optimizer.step()
 
         if args.neg_rankings_loss == 'y':
             # Train neg rankings loss
@@ -279,7 +279,6 @@ def train_multitask(args):
                 neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
                 neg_rankings_loss.backward()
                 optimizer.step()
-                num_batches += 1
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
