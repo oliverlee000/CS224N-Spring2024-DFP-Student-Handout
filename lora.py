@@ -8,8 +8,6 @@ import math
 
 # Make sure to keep the pretrained weights; otherwise, LoraDora should decrease parameters
 
-LORA_SIZE = 50
-
 
 '''
 Lora-fied version of BertSelfAttention
@@ -24,16 +22,16 @@ class LoraBertSelfAttention(nn.Module):
 
         # Initialize the linear transformation layers for key, value, query.
         self.query = nn.Linear(config.hidden_size, self.all_head_size)
-        self.query_A = nn.Linear(config.hidden_size, LORA_SIZE)
-        self.query_B = nn.Linear(LORA_SIZE, self.all_head_size)
+        self.query_A = nn.Linear(config.hidden_size, config.lora_size)
+        self.query_B = nn.Linear(config.lora_size, self.all_head_size)
 
         self.key = nn.Linear(config.hidden_size, self.all_head_size)
-        self.key_A = nn.Linear(config.hidden_size, LORA_SIZE)
-        self.key_B = nn.Linear(LORA_SIZE, self.all_head_size)
+        self.key_A = nn.Linear(config.hidden_size, config.lora_size)
+        self.key_B = nn.Linear(config.lora_size, self.all_head_size)
 
         self.value = nn.Linear(config.hidden_size, self.all_head_size)
-        self.value_A = nn.Linear(config.hidden_size, LORA_SIZE)
-        self.value_B = nn.Linear(LORA_SIZE, self.all_head_size)
+        self.value_A = nn.Linear(config.hidden_size, config.lora_size)
+        self.value_B = nn.Linear(config.lora_size, self.all_head_size)
 
         # This dropout is applied to normalized attention scores following the original
         # implementation of transformer. Although it is a bit unusual, we empirically
@@ -118,21 +116,21 @@ class LoraBertLayer(nn.Module):
         self.self_attention = LoraBertSelfAttention(config)
         # Add-norm for multi-head attention.
         self.attention_dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.attention_dense_A = nn.Linear(config.hidden_size, LORA_SIZE)
-        self.attention_dense_B = nn.Linear(LORA_SIZE, config.hidden_size)
+        self.attention_dense_A = nn.Linear(config.hidden_size, config.lora_size)
+        self.attention_dense_B = nn.Linear(config.lora_size, config.hidden_size)
 
         self.attention_layer_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.attention_dropout = nn.Dropout(config.hidden_dropout_prob)
         # Feed forward.
         self.interm_dense = nn.Linear(config.hidden_size, config.intermediate_size)
-        self.interm_dense_A = nn.Linear(config.hidden_size, LORA_SIZE)
-        self.interm_dense_B = nn.Linear(LORA_SIZE, config.intermediate_size)
+        self.interm_dense_A = nn.Linear(config.hidden_size, config.lora_size)
+        self.interm_dense_B = nn.Linear(config.lora_size, config.intermediate_size)
 
         self.interm_af = F.gelu
         # Add-norm for feed forward.
         self.out_dense = nn.Linear(config.intermediate_size, config.hidden_size)
-        self.out_dense_A = nn.Linear(config.intermediate_size, LORA_SIZE)
-        self.out_dense_B = nn.Linear(LORA_SIZE, config.hidden_size)
+        self.out_dense_A = nn.Linear(config.intermediate_size, config.lora_size)
+        self.out_dense_B = nn.Linear(config.lora_size, config.hidden_size)
 
         self.out_layer_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.out_dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -197,10 +195,15 @@ class LoraBertModel(BertPreTrainedModel):
     1. Embedding layers (used in self.embed).
     2. A stack of n BERT layers (used in self.encode).
     3. A linear transformation layer for the [CLS] token (used in self.forward, as given).
+    
+    We apply a LORA transform, that is, for every linear matrix W of size (m x n), we replace it
+    with matrices W0 + BA, where W0 contains the pretrained weights of size (m x n), and A and B
+    are learnable parameters of size (m x r) and (r x n), where r << m,n.
     """
-    def __init__(self, config):
+    def __init__(self, config, lora_size=50):
         super().__init__(config)
         self.config = config
+        config.lora_size = lora_size
 
         # Embedding layers.
         self.word_embedding = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
@@ -217,8 +220,8 @@ class LoraBertModel(BertPreTrainedModel):
 
         # [CLS] token transformations.
         self.pooler_dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.pooler_dense_A = nn.Linear(config.hidden_size, LORA_SIZE)
-        self.pooler_dense_B = nn.Linear(LORA_SIZE, config.hidden_size)
+        self.pooler_dense_A = nn.Linear(config.hidden_size, config.lora_size)
+        self.pooler_dense_B = nn.Linear(config.lora_size, config.hidden_size)
 
 
         self.pooler_af = nn.Tanh()
