@@ -231,11 +231,11 @@ def train_multitask(args):
 
     model = model.to(device)
 
-    print("fucking hell")
+    #print("fucking hell")
     eval_smart_fn = lambda x : model.predict_similarity_with_emb(x[0], x[1]) #no idea what to put here, create anonymous func tho
-    print(eval_smart_fn)
+    #print(eval_smart_fn)
     smart_loss_fn = SMARTLoss(eval_fn=eval_smart_fn, loss_fn=kl_loss)
-    print("got past sad land")
+    #print("got past sad land")
 
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
@@ -307,19 +307,15 @@ def train_multitask(args):
                 optimizer.zero_grad()
 
                 # Normal loss
-            
+
+                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                sts_logits = torch.squeeze(sts_logits, 1)
+                sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
                 emb1=model(sts_ids_1, sts_mask_1)[:,0,:]
                 emb2=model(sts_ids_2, sts_mask_2)[:,0,:]
-                sts_logits = model.predict_similarity_with_emb(emb1,emb2)
-                sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
-                print("sts logits: ", sts_logits)
-                print("sts logits shape: ", sts_logits.shape,sts_logits[1].shape )
-                sts_logits = torch.squeeze(sts_logits, 1)
-
-                smart_loss = smart_loss_fn((emb1, emb2), state=sts_labels)
-                print("smart loss : ", smart_loss.shape)
-                total_loss = sts_loss + args.smart_weight * smart_loss
-
+                emb = torch.stack((emb1, emb2), dim=0) 
+                smart_loss = smart_loss_fn(emb, state=sts_labels)
+                total_loss = sts_loss + 0.5 * smart_loss
 
                 total_loss.backward()
                 optimizer.step()

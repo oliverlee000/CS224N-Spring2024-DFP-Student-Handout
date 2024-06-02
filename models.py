@@ -262,7 +262,7 @@ class MultitaskBERT(nn.Module):
 
     def forward(self, input_ids, attention_mask):
         output = self.bert(input_ids, attention_mask)
-        print("fuck you buthole:", output)
+        #print("fuck you buthole:", output)
         return output['last_hidden_state']
 
     def predict_sentiment(self, input_ids, attention_mask):
@@ -302,7 +302,7 @@ class MultitaskBERT(nn.Module):
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
         embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
-        print(embed_1.shape, embed_2.shape)
+        #print(embed_1.shape, embed_2.shape)
         if self.sts_concat == 'y':
             embeds = torch.cat((embed_1, embed_2), 1)
             output = self.sts_layers(embeds)
