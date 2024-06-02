@@ -246,7 +246,7 @@ def train_multitask(args):
         model.train()
         if args.cos_sim_loss == 'y':
             # Train cos sim loss
-            for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"Epoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
+            for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"PREpoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
                                                                             cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
                                                                             cos_sim_batch['labels'])
@@ -265,7 +265,7 @@ def train_multitask(args):
 
         if args.neg_rankings_loss == 'y':
             # Train neg rankings loss
-            for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"Epoch {epoch+1}/{args.epochs_ft}, Task = negative rankings loss"):
+            for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"PREpoch {epoch+1}/{args.epochs_ft}, Task = negative rankings loss"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (neg_rankings_batch['token_ids_1'], neg_rankings_batch['attention_mask_1'],
                                                                             neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
                                                                             neg_rankings_batch['labels'])
