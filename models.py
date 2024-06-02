@@ -177,7 +177,7 @@ class MultitaskBERT(nn.Module):
         else:
             output_1 = self.para_layers(embed_1)
             output_2 = self.para_layers(embed_2)
-            output = (output_1 @ output_2.transpose(-1, -2)).view(-1, 1)
+            output = F.cosine_similarity(output_1, output_2).view(-1, 1)
             return output
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
@@ -191,7 +191,7 @@ class MultitaskBERT(nn.Module):
         else:
             output_1 = self.sts_layers(embed_1)
             output_2 = self.sts_layers(embed_2)
-            output = (output_1 @ output_2.transpose(-1 -2)).view(-1, 1)
+            output = F.cosine_similarity(output_1, output_2).view(-1, 1)
             return output
 
     '''
@@ -213,7 +213,7 @@ class MultitaskBERT(nn.Module):
             / torch.linalg.vector_norm(emb_1, dim = 1) / torch.linalg.vector_norm(emb_2.transpose(-1, -2), dim = 0)
         # 3) Returns cross entropy loss, with correct label being the diagonal
         labels = torch.arange(len(sts_ids_1)).to(similarities.device)
-        loss = F.cross_entropy(similarities, labels, reduction ='mean')
+        loss = F.cross_entropy(similarities, labels, reduction ='sum')
         return loss
     
     '''
@@ -222,5 +222,5 @@ class MultitaskBERT(nn.Module):
     def cos_sim_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
         cos_sim_emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
         cos_sim_emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
-        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='mean')
+        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='sum')
         return cos_loss
