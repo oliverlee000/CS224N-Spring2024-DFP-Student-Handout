@@ -240,6 +240,8 @@ def train_multitask(args):
     best_dev_acc = 0
 
     # Run extra fine tuning loss functions for bert embeddings:
+    if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
+        print("Pretraining on additional loss functions.")
     for epoch in range(args.epochs_ft):
         model.train()
         if args.cos_sim_loss == 'y':
@@ -279,8 +281,8 @@ def train_multitask(args):
                 neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
                 neg_rankings_loss.backward()
                 optimizer.step()
-        if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
-            print("Pretraining over.")
+    if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
+        print("Pretraining over.")
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
@@ -531,7 +533,7 @@ def get_args():
     # 1a. Set num linear layers for sst
     parser.add_argument("--sst_layers", type=int,
                         help='num linear layers for sst',
-                        default = 3)
+                        default = 4)
     
     # 1b. Set num linear layers for para
     parser.add_argument("--para_layers", type=int,
