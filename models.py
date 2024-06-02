@@ -135,7 +135,7 @@ class MultitaskBERT(nn.Module):
                 param.requires_grad = True
         # Create LoraBertModel if lora flag is on
         if config.lora == 'y':
-            self.bert = LoraBertModel.from_pretrained('bert-base-uncased')
+            self.bert = LoraBertModel.from_pretrained('bert-base-uncased', lora_size=config.lora_size)
             # Training parameters are by default marked true, so turn off in fine tune mode is last linear layer
             for param in self.bert.parameters():
                 if config.fine_tune_mode == 'last-linear-layer':

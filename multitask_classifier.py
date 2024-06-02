@@ -122,8 +122,10 @@ def print_presets(args):
     print("Settings:")
     print("Task: " + args.task)
     print("Fine tune mode: " + args.fine_tune_mode)
-    print("Ensemble: " + args.boosted_bert)
+    print("Balance sampling factor: " + str(args.balance_sampling))
+    print("Ensembling: " + args.ensembling)
     print("Lora: " + args.lora)
+    print("Lora size: " + str(args.lora_size))
     print("Concat embeddings for PARA: " + str(args.para_concat))
     print("Concat embeddings for STS: " + str(args.sts_concat))
     print("Cosine similarity loss: " + args.cos_sim_loss)
@@ -219,12 +221,13 @@ def train_multitask(args):
         args.para_hidden_size, args.sts_hidden_size
     
     config.lora = args.lora
+    config.lora_size = args.lora_size
 
     config.para_concat, config.sts_concat = args.para_concat, args.sts_concat
 
     model = MultitaskBERT(config)
-    # Change model to boosted if flag is on
-    if args.boosted_bert == "y":
+    # Change model to ensembling if flag is on
+    if args.ensembling == "y":
         model = BoostedBERT(config)
 
     model = model.to(device)
@@ -383,7 +386,7 @@ def test_multitask(args):
         config = saved['model_config']
 
         model = MultitaskBERT(config)
-        if args.boosted_bert == 'y':
+        if args.ensembling == 'y':
             model = BoostedBERT(config)
         model.load_state_dict(saved['model'])
         model = model.to(device)
@@ -550,7 +553,7 @@ def get_args():
                         default = 1)
     
     # 5. Boosted bert
-    parser.add_argument("--boosted_bert", type=str,
+    parser.add_argument("--ensembling", type=str,
                         choices=('y', 'n'),
                         default = 'n')
     
@@ -568,6 +571,9 @@ def get_args():
     parser.add_argument("--lora", type=str,
                         choices=('y', 'n'),
                         default = 'n')
+    
+    parser.add_argument("--lora_size", type=int,
+                        default = 50)
 
     # 8. Concatenate
     parser.add_argument("--para_concat",
