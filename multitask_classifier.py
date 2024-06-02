@@ -126,16 +126,17 @@ def print_presets(args):
     print("Ensembling: " + args.ensembling)
     print("Lora: " + args.lora)
     print("Lora size: " + str(args.lora_size))
-    print("Concat embeddings for PARA: " + str(args.para_concat))
-    print("Concat embeddings for STS: " + str(args.sts_concat))
     print("Cosine similarity loss: " + args.cos_sim_loss)
     print("Negative rankings loss: " + args.neg_rankings_loss)
     print("SST hidden layers: " + str(args.sst_layers))
     print("SST hidden size: " + str(args.sst_hidden_size))
     print("PARA hidden layers: " + str(args.para_layers))
     print("PARA hidden size: " + str(args.para_hidden_size))
+    print("Concat embeddings for PARA: " + str(args.para_concat))
     print("STS hidden layers: " + str(args.sts_layers))
     print("STS hidden size: " + str(args.sts_hidden_size))
+    print("Concat embeddings for STS: " + str(args.sts_concat))
+    
 
 '''
 If args.balance_sampling != 1: Undersample from para by a factor of args.balance_sampling.
