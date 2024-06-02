@@ -110,8 +110,8 @@ class FF(nn.Module):
             output = self.af(output)
         return output
 
-'''
-Multitask BERT class, starter training code, evaluation, and test code.
+
+'''Multitask BERT class, starter training code, evaluation, and test code.
 
 Of note are:
 * class MultitaskBERT: Your implementation of multitask BERT.
@@ -122,7 +122,7 @@ Of note are:
 
 Running `python multitask_classifier.py` trains and tests your MultitaskBERT and
 writes all required submission files.
-'''
+
 class MultitaskBERT(nn.Module):
     def __init__(self, config):
         super(MultitaskBERT, self).__init__()
@@ -193,28 +193,17 @@ class MultitaskBERT(nn.Module):
             output_2 = self.sts_layers(embed_2)
             output = F.cosine_similarity(output_1, output_2).view(-1, 1)
             return output
-        
-    def predict_paraphrase_with_emb(self, emb_1, emb_2):
-        if self.para_concat == 'y':
-            embeds = torch.cat((emb_1, emb_2), 1)
-            output = self.para_layers(embeds)
-            return output
-        else:
-            output_1 = self.para_layers(emb_1)
-            output_2 = self.para_layers(emb_2)
-            output = F.cosine_similarity(output_1, output_2, dim=-1).view(-1, 1)
-            return output
 
 
-    '''
     Returns negative ranking loss of pairs of equivalent sentences.
     We take the cross similarity of each sentences in sts_ids_1 with all sentences in sts_ids_2, optimizing so that
     all pairs of sentences which are labeled as equivalent (score 3.5) or higher, get high cosine similarity scores
 
     1) Filters out all examples of sentence pairs that aren't equivalent
     2) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
-    3) Returns cross entropy loss, with correct label being the diagonal, as well as number of examples considered   
-    '''
+    3) Returns cross entropy loss, with correct label being the diagonal, as well as number of examples considered
+    
+
     def multiple_negatives_ranking_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2):
         #1) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
         emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
@@ -234,7 +223,95 @@ class MultitaskBERT(nn.Module):
         cos_sim_emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
         cos_sim_emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
         cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='mean')
-        return cos_loss
+        return cos_loss'''
+
+
+        
+class MultitaskBERT(nn.Module):
+    def __init__(self, config):
+        super(MultitaskBERT, self).__init__()
+        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        assert config.fine_tune_mode in ["last-linear-layer", "full-model"]
+        for param in self.bert.parameters():
+            if config.fine_tune_mode == 'last-linear-layer':
+                param.requires_grad = False
+            elif config.fine_tune_mode == 'full-model':
+                param.requires_grad = True
+        # Create LoraBertModel if lora flag is on
+        if config.lora == 'y':
+            self.bert = LoraBertModel.from_pretrained('bert-base-uncased')
+            # Training parameters are by default marked true, so turn off in fine tune mode is last linear layer
+            for param in self.bert.parameters():
+                if config.fine_tune_mode == 'last-linear-layer':
+                    param.requires_grad = False
+
+        sst_hidden_size, para_hidden_size, sts_hidden_size = \
+            config.sst_hidden_size, config.para_hidden_size, config.sts_hidden_size
+        
+        self.sst_layers = NN(config.num_sst_layers, BERT_HIDDEN_SIZE, sst_hidden_size, N_SENTIMENT_CLASSES)
+        
+        # Handle concatenation for para and sts layers
+        para_input_size = 2 * BERT_HIDDEN_SIZE if config.para_concat == 'y' else BERT_HIDDEN_SIZE
+        sts_input_size = 2 * BERT_HIDDEN_SIZE if config.sts_concat == 'y' else BERT_HIDDEN_SIZE
+        
+        self.para_layers = NN(config.num_para_layers, para_input_size, para_hidden_size, 1)
+        self.sts_layers = NN(config.num_sts_layers, sts_input_size, sts_hidden_size, 1)
+
+        self.para_concat = config.para_concat
+        self.sts_concat = config.sts_concat
+
+    def forward(self, input_ids, attention_mask):
+        output = self.bert(input_ids, attention_mask)
+        #print("fuck you buthole:", output)
+        return output['last_hidden_state']
+
+    def predict_sentiment(self, input_ids, attention_mask):
+        embed = self.bert(input_ids, attention_mask)['last_hidden_state'][:,0,:]
+        output = self.sst_layers(embed)
+        
+        return output
+
+    def predict_sentiment_with_emb(self, emb):
+        output = self.sst_layers(emb)
+        return output
+
+    def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
+        embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
+        if self.para_concat == 'y':
+            embeds = torch.cat((embed_1, embed_2), 1)
+            output = self.para_layers(embeds)
+            return output
+        else:
+            output_1 = self.para_layers(embed_1)
+            output_2 = self.para_layers(embed_2)
+            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
+            return output
+
+    def predict_paraphrase_with_emb(self, emb_1, emb_2):
+        if self.para_concat == 'y':
+            embeds = torch.cat((emb_1, emb_2), 1)
+            output = self.para_layers(embs)
+            return output
+        else:
+            output_1 = self.para_layers(emb_1)
+            output_2 = self.para_layers(emb_2)
+            output = F.cosine_similarity(output_1, output_2, dim=-1).view(-1, 1)
+            return output
+
+    def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
+        embed_1 = self.bert(input_ids_1, attention_mask_1)['last_hidden_state'][:,0,:]
+        embed_2 = self.bert(input_ids_2, attention_mask_2)['last_hidden_state'][:,0,:]
+        #print(embed_1.shape, embed_2.shape)
+        if self.sts_concat == 'y':
+            embeds = torch.cat((embed_1, embed_2), 1)
+            output = self.sts_layers(embeds)
+            return output
+        else:
+            output_1 = self.sts_layers(embed_1)
+            output_2 = self.sts_layers(embed_2)
+            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
+            return output
 
     def predict_similarity_with_emb(self, emb_1, emb_2):
         if self.sts_concat == 'y':
@@ -246,3 +323,22 @@ class MultitaskBERT(nn.Module):
             output_2 = self.sts_layers(emb_2)
             output = F.cosine_similarity(output_1, output_2, dim=-1).view(-1, 1)
             return output
+
+    def multiple_negatives_ranking_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2):
+        #1) Evaluates cosine similarity for each sentence 1 and all possible sentence 2
+        emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
+        emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
+
+        similarities = emb_1 @ emb_2.transpose(-1, -2) \
+            / torch.linalg.vector_norm(emb_1, dim = 1) / torch.linalg.vector_norm(emb_2.transpose(-1, -2), dim = 0)
+        # 3) Returns cross entropy loss, with correct label being the diagonal
+        labels = torch.arange(len(sts_ids_1)).to(similarities.device)
+        loss = F.cross_entropy(similarities, labels, reduction ='mean')
+        return loss
+    def cos_sim_loss(self, sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels):
+        cos_sim_emb_1 = self.bert(sts_ids_1, sts_mask_1)['last_hidden_state'][:,0,:]
+        cos_sim_emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
+        cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='sum')
+        return cos_loss
+    def get_embeddings(self, input_ids, attention_mask):
+        return self.bert(input_ids=input_ids, attention_mask=attention_mask)[0]
