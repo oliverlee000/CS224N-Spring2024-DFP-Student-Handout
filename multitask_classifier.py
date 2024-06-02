@@ -126,7 +126,7 @@ def print_presets(args):
     print("Lora: " + args.lora)
     print("Concat embeddings for PARA: " + str(args.para_concat))
     print("Concat embeddings for STS: " + str(args.sts_concat))
-    print("Cosine similarity loss: + " + args.cos_sim_loss)
+    print("Cosine similarity loss: " + args.cos_sim_loss)
     print("Negative rankings loss: " + args.neg_rankings_loss)
     print("SST hidden layers: " + str(args.sst_layers))
     print("SST hidden size: " + str(args.sst_hidden_size))
