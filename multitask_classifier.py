@@ -279,6 +279,8 @@ def train_multitask(args):
                 neg_rankings_loss = FINE_TUNING_DOWNWEIGHT * model.multiple_negatives_ranking_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2)
                 neg_rankings_loss.backward()
                 optimizer.step()
+        if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
+            print("Pretraining over.")
 
     # Run for the specified number of epochs.
     for epoch in range(args.epochs):
