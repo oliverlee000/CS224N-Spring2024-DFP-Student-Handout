@@ -177,7 +177,7 @@ class MultitaskBERT(nn.Module):
         else:
             output_1 = self.para_layers(embed_1)
             output_2 = self.para_layers(embed_2)
-            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
+            output = (output_1 @ output_2.transpose(-1, -2)).view(-1, 1)
             return output
 
     def predict_similarity(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
@@ -191,7 +191,7 @@ class MultitaskBERT(nn.Module):
         else:
             output_1 = self.sts_layers(embed_1)
             output_2 = self.sts_layers(embed_2)
-            output = F.cosine_similarity(output_1, output_2, dim = -1).view(-1, 1)
+            output = (output_1 @ output_2.transpose(-1 -2)).view(-1, 1)
             return output
 
     '''
