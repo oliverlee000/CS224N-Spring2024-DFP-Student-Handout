@@ -574,7 +574,7 @@ def get_args():
                         default = 100)
     
     parser.add_argument("--para_hidden_size", type=int,
-                        default = 10)
+                        default = 100)
     
     parser.add_argument("--sts_hidden_size", type=int,
                         default = 5)
@@ -585,7 +585,7 @@ def get_args():
                         default = 'n')
     
     parser.add_argument("--lora_size", type=int,
-                        default = 50)
+                        default = 100)
 
     # 9. Concatenate embeddings for para and sts
     parser.add_argument("--para_concat",
