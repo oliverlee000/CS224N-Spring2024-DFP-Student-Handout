@@ -262,7 +262,7 @@ class MultitaskBERT(nn.Module):
         #self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, input_ids, attention_mask):
-        output = self.bert(input_ids, attention_mask)['pooler_output']
+        output = self.bert(input_ids, attention_mask)['hidden_state']
         return output['last_hidden_state']
     
     def smart_forward(self, input_ids, attention_mask):
