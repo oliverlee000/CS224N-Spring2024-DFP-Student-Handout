@@ -41,6 +41,8 @@ from evaluation_single import model_eval_para, model_eval_sts, model_eval_test_s
 
 from evaluation import model_eval_sst, model_eval_multitask, model_eval_test_multitask
 
+from smart_pytorch import SMARTLoss, kl_loss, sym_kl_loss
+
 BERT_HIDDEN_SIZE = 768
 FINE_TUNING_DOWNWEIGHT = 1 # downweights cosine similarity and negative ranking loss finetuning
 
@@ -146,8 +148,11 @@ def balance_sampling(sst_train_data, para_train_data, sts_train_data, args):
 
     return sst_train_data, para_train_data, sts_train_data
 
-
-from smart_pytorch import SMARTLoss, kl_loss, sym_kl_loss
+def pearson_corr(cow, cat, eps=1e-8):
+    moo = cow - torch.mean(cow)
+    meow = cat - torch.mean(cat)
+    div = (torch.sqrt(torch.sum(moo**2)) * torch.sqrt(torch.sum(meow**2)) + eps)
+    return torch.sum(moo * meow) / div
 
 def train_multitask(args):
     '''Train MultitaskBERT.
@@ -305,29 +310,31 @@ def train_multitask(args):
 
                 optimizer.zero_grad()
 
-                # Normal loss
-                def pearson_corr(cow, cat):
-                    moo = cow - torch.mean(cow)
-                    meow = cat - torch.mean(cat)
-                    div = (torch.sqrt(torch.sum(moo** 2)) * torch.sqrt(torch.sum(meow ** 2)))
-                    return torch.sum(moo*meow) / div
-
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_logits = torch.squeeze(sts_logits, 1)
-
+                
+                #use pearson loss if the tag is on, else use mse
+                sts_loss = 0
                 if args.pearson_loss == 'y':
-                    sts_loss = 1 - pearson_corr(sts_logits, sts_labels.view(-1))
-                else:     
+                    corr = pearson_corr(sts_logits, sts_labels.view(-1))
+                    if torch.isnan(corr):
+                        print("NaN detected in Pearson correlation calculation.")
+                        continue
+                    sts_loss = 1 - corr
+                else:
                     sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
-
+                
+                #turn on or off smart regularization. Can determine weight via command line flags
                 if smart_loss_fn is not None:
-                    emb1 = model.forward(sts_ids_1, sts_mask_1)[:, 0, :]
-                    emb2 = model.forward(sts_ids_2, sts_mask_2)[:, 0, :]
+                    emb1 = model.smart_forward(sts_ids_1, sts_mask_1)
+                    emb2 = model.smart_forward(sts_ids_2, sts_mask_2)
                     emb = torch.stack((emb1, emb2), dim=0)
                     smart_loss = smart_loss_fn(emb, sts_logits)
                     total_loss = sts_loss + args.smart_weight * smart_loss
                 else:
                     total_loss = sts_loss
+
+                print(total_loss.item())
 
                 total_loss.backward()
                 optimizer.step()
@@ -612,7 +619,7 @@ def get_args():
     parser.add_argument("--use_smart", type=str, choices=('y', 'n'), default='y')
 
     #10 pearson loss
-    parser.add_argument("--pearson_loss", type=str, choices=('y', 'n'), default='y')
+    parser.add_argument("--pearson_loss", type=str, choices=('y', 'n'), default='n')
 
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
