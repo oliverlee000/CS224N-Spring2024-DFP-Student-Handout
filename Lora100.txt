@@ -1,0 +1,64 @@
+Settings:
+Task: sst
+Fine tune mode: full-model
+Num of epochs: 5
+Num of epochs for extra loss functions: 1
+Balance sampling factor: 1
+Ensembling: n
+Lora: y
+Lora size: 100
+Cosine similarity loss fine tuning: n
+Negative rankings loss fine tuning: y
+SST hidden layers: 2
+SST hidden size: 100
+PARA hidden layers: 2
+PARA hidden size: 10
+Concat embeddings for PARA: y
+STS hidden layers: 0
+STS hidden size: 5
+Concat embeddings for STS: n
+Loaded 9395 train examples from data/ids-sst-train-merged.csv
+Loaded 283003 train examples from data/quora-train.csv
+Loaded 6040 train examples from data/sts-train.csv
+Loaded 1101 train examples from data/ids-sst-dev.csv
+Loaded 40429 train examples from data/quora-dev.csv
+Loaded 863 train examples from data/sts-dev.csv
+Loaded 2047 train examples from data/neg-rankings-train.csv
+Pretraining on additional loss functions.
+Pretraining over.
+save the model to full-model-5-1e-05-multitask.pt
+Epoch 1: train loss :: 1.256, dev acc :: 0.445
+save the model to full-model-5-1e-05-multitask.pt
+Epoch 2: train loss :: 0.986, dev acc :: 0.492
+Epoch 3: train loss :: 0.889, dev acc :: 0.490
+save the model to full-model-5-1e-05-multitask.pt
+Epoch 4: train loss :: 0.804, dev acc :: 0.499
+save the model to full-model-5-1e-05-multitask.pt
+Epoch 5: train loss :: 0.726, dev acc :: 0.510
+Loaded model to test from full-model-5-1e-05-multitask.pt
+Loaded 2210 test examples from data/ids-sst-test-student.csv
+Loaded 80858 test examples from data/quora-test-student.csv
+Loaded 1725 test examples from data/sts-test-student.csv
+Loaded 1101 dev examples from data/ids-sst-dev.csv
+Loaded 40429 dev examples from data/quora-dev.csv
+Loaded 863 dev examples from data/sts-dev.csv
+dev sentiment acc :: 0.510
+Settings:
+Task: sst
+Fine tune mode: full-model
+Num of epochs: 5
+Num of epochs for extra loss functions: 1
+Balance sampling factor: 1
+Ensembling: n
+Lora: y
+Lora size: 100
+Cosine similarity loss fine tuning: n
+Negative rankings loss fine tuning: y
+SST hidden layers: 2
+SST hidden size: 100
+PARA hidden layers: 2
+PARA hidden size: 10
+Concat embeddings for PARA: y
+STS hidden layers: 0
+STS hidden size: 5
+Concat embeddings for STS: n
