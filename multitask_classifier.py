@@ -78,11 +78,14 @@ class LoRADoRA(nn.Module):
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
 
 '''
-Returns pearson coefficient loss'''
+Returns pearson coefficient loss
+
+Pearon coefficient is defined as E[(X-E[X])(Y-E[Y])]/sqrt(Var(X)Var(Y))
+'''
 def pearson_coefficient_loss(output, target):
     vx = output - torch.mean(output)
     vy = target - torch.mean(target)
-    return vx * vy * torch.rsqrt(torch.sum(vx ** 2)) * torch.rsqrt(torch.sum(vy ** 2))
+    return -1 * torch.dot(vx, vy) * torch.rsqrt(torch.sum(vx ** 2)) * torch.rsqrt(torch.sum(vy ** 2))
 
 TQDM_DISABLE=False
 
@@ -235,6 +238,11 @@ def train_multitask(args):
     optimizer = AdamW(model.parameters(), lr=lr)
     best_dev_acc = 0
 
+    # Set loss function for sts
+    sts_loss_fn = lambda sts_logits, sts_labels: F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
+    if args.pearson_loss == 'y':
+        sts_loss_fn = pearson_coefficient_loss
+
     # Run extra fine tuning loss functions for bert embeddings:
     if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
         print("Pretraining on additional loss functions.")
@@ -349,7 +357,8 @@ def train_multitask(args):
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_logits = torch.squeeze(sts_logits, 1)
-                sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
+                #sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
+                sts_loss = sts_loss_fn(sts_logits, sts_labels)
 
                 sts_loss.backward()
                 optimizer.step()
