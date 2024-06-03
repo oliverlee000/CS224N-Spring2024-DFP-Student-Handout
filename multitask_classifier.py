@@ -479,7 +479,7 @@ def test_multitask(args):
         elif args.task == "sst":
             dev_sentiment_accuracy, _, dev_sst_y_pred, _, _, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
                                                                         model, device)
-            test_sst_y_pred, test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = model_eval_test_sst(sst_test_dataloader, model, device)
+            test_sst_y_pred, test_sst_sent_ids = model_eval_test_sst(sst_test_dataloader, model, device)
 
             with open(args.sst_dev_out, "w+") as f:
                 print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
