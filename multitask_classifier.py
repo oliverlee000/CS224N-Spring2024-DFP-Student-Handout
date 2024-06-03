@@ -468,12 +468,12 @@ def test_multitask(args):
 
             with open(args.sts_dev_out, "w+") as f:
                 print(f"dev sts corr :: {dev_sts_corr :.3f}")
-                f.write(f"id \t Predicted_Similiary \n")
+                f.write(f"id \t Predicted_Similiarity \n")
                 for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
                     f.write(f"{p} , {s} \n")
 
             with open(args.sts_test_out, "w+") as f:
-                f.write(f"id \t Predicted_Similiary \n")
+                f.write(f"id \t Predicted_Similiarity \n")
                 for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
                     f.write(f"{p} , {s} \n")
         elif args.task == "sst":
