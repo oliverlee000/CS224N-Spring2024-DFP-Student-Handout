@@ -259,13 +259,18 @@ class MultitaskBERT(nn.Module):
 
         self.para_concat = config.para_concat
         self.sts_concat = config.sts_concat
+        #self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, input_ids, attention_mask):
-        output = self.bert(input_ids, attention_mask)
-        #print("fuck you buthole:", output)
+        output = self.bert(input_ids, attention_mask)['pooler_output']
         return output['last_hidden_state']
+    
+    def smart_forward(self, input_ids, attention_mask):
+        return self.bert(input_ids, attention_mask)['pooler_output']
+
 
     def predict_sentiment(self, input_ids, attention_mask):
+        
         embed = self.bert(input_ids, attention_mask)['last_hidden_state'][:,0,:]
         output = self.sst_layers(embed)
         
