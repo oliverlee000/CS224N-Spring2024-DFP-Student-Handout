@@ -605,6 +605,13 @@ def get_args():
                         help="Use Pearson coefficient loss for STS task",
                         choices=('y','n'),
                         default='y')
+    
+    # 11. Skip training and run test_multitask
+    parser.add_argument("--eval",
+                        type=str,
+                        help="Skip training and run test_multitask",
+                        choices=('y','n'),
+                        default='n')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
@@ -648,8 +655,11 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     args.filepath = f'{args.fine_tune_mode}-{args.epochs}-{args.lr}-multitask.pt' # Save path.
-    seed_everything(args.seed)  # Fix the seed for reproducibility.
-    print_presets(args)
-    train_multitask(args)
-    test_multitask(args)
-    print_presets(args)
+    if args.eval == 'y':
+        test_multitask(args)
+    else:
+        seed_everything(args.seed)  # Fix the seed for reproducibility.
+        print_presets(args)
+        train_multitask(args)
+        test_multitask(args)
+        print_presets(args)
