@@ -511,7 +511,7 @@ def test_multitask(args):
                 for p, s in zip(test_para_sent_ids, test_para_y_pred):
                     f.write(f"{p} , {s} \n")
         else:
-            dev_sts_corr, dev_sts_y_pred, dev_sts_sent_ids = model_eval_sts(sts_dev_dataloader, model, device)
+            dev_sts_corr, _, dev_sts_y_pred, _, _, dev_sts_sent_ids = model_eval_sts(sts_dev_dataloader, model, device)
 
             test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_sts(sts_test_dataloader, model, device)
