@@ -293,49 +293,6 @@ def train_multitask(args):
     model.train()
     # Train each task one after the other, and load into state dict
     # Train sentiment
-    if args.task == "all" or args.task == "sts":
-        model.load_state_dict(torch.load(args.filepath)['model'])
-        train_loss = 0
-        num_batches = 0
-        for epoch in range(args.epochs):
-            # Train similarity
-            for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = similarity"):
-                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
-                                                                            sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
-                                                                            sts_batch['labels'])
-                sts_ids_1 = sts_ids_1.to(device)
-                sts_mask_1 = sts_mask_1.to(device)
-                sts_ids_2 = sts_ids_2.to(device)
-                sts_mask_2 = sts_mask_2.to(device)
-                sts_labels = sts_labels.to(device).float()
-                
-                optimizer.zero_grad()
-
-                # Normal loss
-
-                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
-                sts_logits = torch.squeeze(sts_logits, 1)
-                sts_loss = sts_loss_fn(sts_logits, sts_labels)
-
-                sts_loss.backward()
-                optimizer.step()
-
-                train_loss += sts_loss.item()
-                num_batches += 1
-        
-            train_loss = train_loss / (num_batches)
-            overall_dev_acc = 0
-            if args.task == "sts":
-                sts_corr, _, _ = model_eval_sts(sts_dev_dataloader, model, device)
-                overall_dev_acc = sts_corr
-            else:
-                sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-                overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
-
-        if overall_dev_acc > best_dev_acc:
-            best_dev_acc = overall_dev_acc
-            save_model(model, optimizer, args, config, args.filepath)
-        print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
     if args.task == "all" or args.task == "sst":
         for epoch in range(args.epochs):
             train_loss = 0
@@ -410,6 +367,50 @@ def train_multitask(args):
                 best_dev_acc = overall_dev_acc
                 save_model(model, optimizer, args, config, args.filepath)
             print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
+
+    if args.task == "all" or args.task == "sts":
+        model.load_state_dict(torch.load(args.filepath)['model'])
+        train_loss = 0
+        num_batches = 0
+        for epoch in range(args.epochs):
+            # Train similarity
+            for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = similarity"):
+                sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
+                                                                            sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
+                                                                            sts_batch['labels'])
+                sts_ids_1 = sts_ids_1.to(device)
+                sts_mask_1 = sts_mask_1.to(device)
+                sts_ids_2 = sts_ids_2.to(device)
+                sts_mask_2 = sts_mask_2.to(device)
+                sts_labels = sts_labels.to(device).float()
+                
+                optimizer.zero_grad()
+
+                # Normal loss
+
+                sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
+                sts_logits = torch.squeeze(sts_logits, 1)
+                sts_loss = sts_loss_fn(sts_logits, sts_labels)
+
+                sts_loss.backward()
+                optimizer.step()
+
+                train_loss += sts_loss.item()
+                num_batches += 1
+        
+            train_loss = train_loss / (num_batches)
+            overall_dev_acc = 0
+            if args.task == "sts":
+                sts_corr, _, _ = model_eval_sts(sts_dev_dataloader, model, device)
+                overall_dev_acc = sts_corr
+            else:
+                sentiment_accuracy, sst_y_pred, sst_sent_ids, paraphrase_accuracy, para_y_pred, para_sent_ids, sts_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+                overall_dev_acc = (sentiment_accuracy + paraphrase_accuracy + sts_corr) / 3
+
+        if overall_dev_acc > best_dev_acc:
+            best_dev_acc = overall_dev_acc
+            save_model(model, optimizer, args, config, args.filepath)
+        print(f"Epoch {epoch+1}: train loss :: {train_loss :.3f}, dev acc :: {overall_dev_acc :.3f}")
 
 
 def test_multitask(args):
