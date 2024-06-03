@@ -477,9 +477,8 @@ def test_multitask(args):
                 for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
                     f.write(f"{p} , {s} \n")
         elif args.task == "sst":
-            dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
+            dev_sentiment_accuracy, _, dev_sst_y_pred, _, _, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
                                                                         model, device)
-
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_sst(sst_test_dataloader, model, device)
