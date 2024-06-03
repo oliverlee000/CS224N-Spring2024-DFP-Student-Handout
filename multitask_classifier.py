@@ -134,6 +134,7 @@ def print_presets(args):
     print("PARA hidden layers: " + str(args.para_layers))
     print("PARA hidden size: " + str(args.para_hidden_size))
     print("Concat embeddings for PARA: " + str(args.para_concat))
+    print("Pearson loss for STS: " + str(args.pearson_loss))
     print("STS hidden layers: " + str(args.sts_layers))
     print("STS hidden size: " + str(args.sts_hidden_size))
     print("Concat embeddings for STS: " + str(args.sts_concat))
@@ -551,7 +552,7 @@ def get_args():
     parser.add_argument("--cos_sim_loss", type=str,
                         choices=('y', 'n'),
                         help='cosine similarity loss for embeddings',
-                        default = 'n')
+                        default = 'y')
     # 3. Set neg ranking loss for similarity task
     parser.add_argument("--neg_rankings_loss", type=str,
                         help='neg ranking loss for embeddings',
