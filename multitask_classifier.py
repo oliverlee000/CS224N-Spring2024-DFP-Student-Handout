@@ -240,8 +240,8 @@ def train_multitask(args):
 
     # Set loss function for sts
     sts_loss_fn = lambda sts_logits, sts_labels: F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
-    # if args.pearson_loss == 'y':
-    #     sts_loss_fn = pearson_coefficient_loss
+    if args.pearson_loss == 'y':
+        sts_loss_fn = pearson_coefficient_loss
 
     # Run extra fine tuning loss functions for bert embeddings:
     if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
@@ -602,6 +602,13 @@ def get_args():
     parser.add_argument("--sts_concat",
                         type=str,
                         help='Concatenate bert embeddings for sts',
+                        choices=('y','n'),
+                        default='n')
+    
+    # 10. Pearson loss for sts
+    parser.add_argument("--pearson_loss",
+                        type=str,
+                        help="Use Pearson coefficient loss for STS task",
                         choices=('y','n'),
                         default='n')
 
