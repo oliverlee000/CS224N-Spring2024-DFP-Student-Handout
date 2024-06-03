@@ -24,7 +24,7 @@ from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
 
-from models import BoostedBERT, MultitaskBERT
+from ethan_models import BoostedBERT, MultitaskBERT
 
 from datasets import (
     SentenceClassificationDataset,
@@ -330,6 +330,7 @@ def train_multitask(args):
                     emb2 = model.smart_forward(sts_ids_2, sts_mask_2)
                     emb = torch.stack((emb1, emb2), dim=0)
                     smart_loss = smart_loss_fn(emb, sts_logits)
+                    #print(args.smart_weight*smart_loss.item())
                     total_loss = sts_loss + args.smart_weight * smart_loss
                 else:
                     total_loss = sts_loss
@@ -615,7 +616,7 @@ def get_args():
                         choices=('y','n'),
                         default='n')
     #9 smart
-    parser.add_argument("--smart_weight", type=float, default=0.5, help="Weight for SMART regularization loss")
+    parser.add_argument("--smart_weight", type=float, default=0.2, help="Weight for SMART regularization loss")
     parser.add_argument("--use_smart", type=str, choices=('y', 'n'), default='y')
 
     #10 pearson loss

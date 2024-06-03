@@ -240,8 +240,8 @@ def train_multitask(args):
 
     # Set loss function for sts
     sts_loss_fn = lambda sts_logits, sts_labels: F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
-    if args.pearson_loss == 'y':
-        sts_loss_fn = pearson_coefficient_loss
+    # if args.pearson_loss == 'y':
+    #     sts_loss_fn = pearson_coefficient_loss
 
     # Run extra fine tuning loss functions for bert embeddings:
     if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
@@ -477,9 +477,8 @@ def test_multitask(args):
                 for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
                     f.write(f"{p} , {s} \n")
         elif args.task == "sst":
-            dev_sentiment_accuracy,dev_sst_y_pred, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
+            dev_sentiment_accuracy, _, dev_sst_y_pred, _, _, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
                                                                         model, device)
-
             test_sst_y_pred, \
                 test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = \
                     model_eval_test_sst(sst_test_dataloader, model, device)
