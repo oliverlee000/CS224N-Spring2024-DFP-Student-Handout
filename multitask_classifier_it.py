@@ -384,15 +384,12 @@ def train_multitask(args):
                 sts_mask_2 = sts_mask_2.to(device)
                 sts_labels = sts_labels.to(device).float()
                 
-                size = args.batch_size # Added local variable in case cosine embedding loss is used
-
                 optimizer.zero_grad()
 
                 # Normal loss
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_logits = torch.squeeze(sts_logits, 1)
-                #sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
                 sts_loss = sts_loss_fn(sts_logits, sts_labels)
 
                 sts_loss.backward()
