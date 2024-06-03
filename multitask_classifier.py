@@ -536,7 +536,7 @@ def get_args():
     # 1a. Set num linear layers for sst
     parser.add_argument("--sst_layers", type=int,
                         help='num linear layers for sst',
-                        default = 4)
+                        default = 2)
     
     # 1b. Set num linear layers for para
     parser.add_argument("--para_layers", type=int,
@@ -546,7 +546,7 @@ def get_args():
     # 1c. Set num linear layers for sts
     parser.add_argument("--sts_layers", type = int,
                         help='num linear layers for sts',
-                        default = 2)
+                        default = 0)
     
 
     # 2. Set cosine similarity loss for similarity task
