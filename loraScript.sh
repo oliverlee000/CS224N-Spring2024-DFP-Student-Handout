@@ -18,3 +18,4 @@ do
   # Optional: print a message indicating the command has completed
   echo "Completed: $command"
 done
+
