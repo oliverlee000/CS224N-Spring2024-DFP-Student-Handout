@@ -488,7 +488,7 @@ def test_multitask(args):
                     f.write(f"{p} , {s} \n")
             with open(args.sst_test_out, "w+") as f:
                 f.write(f"id \t Predicted_Sentiment \n")
-                for p, s in zip(test_sst_sent_ids, test_sst_y_pred):
+                for p, s in zip(sst_y_pred, sst_sent_ids):
                     f.write(f"{p} , {s} \n")
         elif args.task == "para":
             dev_paraphrase_accuracy, dev_para_y_pred, dev_para_sent_ids \
