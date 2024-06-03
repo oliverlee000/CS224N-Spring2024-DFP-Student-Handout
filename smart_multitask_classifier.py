@@ -231,11 +231,10 @@ def train_multitask(args):
 
     model = model.to(device)
 
-    #print("fucking hell")
-    eval_smart_fn = lambda x : model.predict_similarity_with_emb(x[0], x[1]) #no idea what to put here, create anonymous func tho
-    #print(eval_smart_fn)
-    smart_loss_fn = SMARTLoss(eval_fn=eval_smart_fn, loss_fn=kl_loss)
-    #print("got past sad land")
+    smart_loss_fn = None
+    if args.use_smart == 'y':
+        eval_smart_fn = lambda x: model.predict_similarity_with_emb(x[0], x[1])
+        smart_loss_fn = SMARTLoss(eval_fn=eval_smart_fn, loss_fn=kl_loss)
 
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
@@ -307,15 +306,28 @@ def train_multitask(args):
                 optimizer.zero_grad()
 
                 # Normal loss
+                def pearson_corr(cow, cat):
+                    moo = cow - torch.mean(cow)
+                    meow = cat - torch.mean(cat)
+                    div = (torch.sqrt(torch.sum(moo** 2)) * torch.sqrt(torch.sum(meow ** 2)))
+                    return torch.sum(moo*meow) / div
 
                 sts_logits = model.predict_similarity(sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2)
                 sts_logits = torch.squeeze(sts_logits, 1)
-                sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
-                emb1=model(sts_ids_1, sts_mask_1)[:,0,:]
-                emb2=model(sts_ids_2, sts_mask_2)[:,0,:]
-                emb = torch.stack((emb1, emb2), dim=0) 
-                smart_loss = smart_loss_fn(emb, state=sts_labels)
-                total_loss = sts_loss + 0.5 * smart_loss
+
+                if args.pearson_loss == 'y':
+                    sts_loss = 1 - pearson_corr(sts_logits, sts_labels.view(-1))
+                else:     
+                    sts_loss = F.mse_loss(sts_logits, sts_labels, reduction='sum') / args.batch_size
+
+                if smart_loss_fn is not None:
+                    emb1 = model.forward(sts_ids_1, sts_mask_1)[:, 0, :]
+                    emb2 = model.forward(sts_ids_2, sts_mask_2)[:, 0, :]
+                    emb = torch.stack((emb1, emb2), dim=0)
+                    smart_loss = smart_loss_fn(emb, sts_logits)
+                    total_loss = sts_loss + args.smart_weight * smart_loss
+                else:
+                    total_loss = sts_loss
 
                 total_loss.backward()
                 optimizer.step()
@@ -597,6 +609,11 @@ def get_args():
                         default='n')
     #9 smart
     parser.add_argument("--smart_weight", type=float, default=0.5, help="Weight for SMART regularization loss")
+    parser.add_argument("--use_smart", type=str, choices=('y', 'n'), default='y')
+
+    #10 pearson loss
+    parser.add_argument("--pearson_loss", type=str, choices=('y', 'n'), default='y')
+
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
@@ -632,7 +649,7 @@ def get_args():
     parser.add_argument("--batch_size", help='sst: 64, cfimdb: 8 can fit a 12GB GPU', type=int, default=8)
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
     parser.add_argument("--lr", type=float, help="learning rate", default=1e-5)
-    parser.add_argument("--use_smart", type=str, choices=('y', 'n'), default='y')
+    
 
     args = parser.parse_args()
     return args
