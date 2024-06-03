@@ -468,18 +468,18 @@ def test_multitask(args):
 
             with open(args.sts_dev_out, "w+") as f:
                 print(f"dev sts corr :: {dev_sts_corr :.3f}")
-                f.write(f"id \t Predicted_Similiary \n")
+                f.write(f"id \t Predicted_Similiarity \n")
                 for p, s in zip(dev_sts_sent_ids, dev_sts_y_pred):
                     f.write(f"{p} , {s} \n")
 
             with open(args.sts_test_out, "w+") as f:
-                f.write(f"id \t Predicted_Similiary \n")
+                f.write(f"id \t Predicted_Similiarity \n")
                 for p, s in zip(test_sts_sent_ids, test_sts_y_pred):
                     f.write(f"{p} , {s} \n")
         elif args.task == "sst":
             dev_sentiment_accuracy, _, dev_sst_y_pred, _, _, dev_sst_sent_ids = model_eval_sst(sst_dev_dataloader,
                                                                         model, device)
-            sst_y_pred, sst_sent_ids = model_eval_test_sst(sst_test_dataloader, model, device)
+            test_sst_y_pred, test_sst_sent_ids, test_para_y_pred, test_para_sent_ids, test_sts_y_pred, test_sts_sent_ids = model_eval_test_sst(sst_test_dataloader, model, device)
 
             with open(args.sst_dev_out, "w+") as f:
                 print(f"dev sentiment acc :: {dev_sentiment_accuracy :.3f}")
