@@ -634,7 +634,7 @@ def get_args():
                         type=str,
                         help="Use Pearson coefficient loss for STS task",
                         choices=('y','n'),
-                        default='n')
+                        default='y')
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
