@@ -613,7 +613,7 @@ def get_args():
                         choices=('y','n'),
                         default='n')
 
-    parser.add_argument("--sst_train", type=str, default="data/ids-sst-train-merged.csv")
+    parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
     parser.add_argument("--sst_test", type=str, default="data/ids-sst-test-student.csv")
 
