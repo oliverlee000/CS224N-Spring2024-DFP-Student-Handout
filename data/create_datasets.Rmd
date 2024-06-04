@@ -69,7 +69,7 @@ para_base <- read.delim("quora-train.csv")
 para_merged <- rbind(para_base, duplicate_questions)
 
 # Make sure that csv is tab delimited
-write.csv(para_merged, "para-train-merged.csv", 
+write.table(para_merged, "para-train-merged.csv", 
             row.names = FALSE, sep="\t")
 
 ```
