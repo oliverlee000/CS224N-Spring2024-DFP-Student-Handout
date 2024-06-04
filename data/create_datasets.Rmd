@@ -48,7 +48,7 @@ duplicate_questions$id <- stri_rand_strings(nrow(duplicate_questions),
                                             pattern="[0-9a-f]")
 
 # Set is_duplicate to 1.0
-duplicate_questions <- duplicate_questions
+duplicate_questions <- duplicate_questions[0:50000,]
 
 duplicate_questions <- duplicate_questions %>%
   mutate(is_duplicate = 1.0) %>%
