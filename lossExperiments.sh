@@ -2,11 +2,11 @@
 
 # Define an array of commands
 commands=(
-    "python3 multitask_classifier.py --boosted_bert y --use_gpu --fine-tune-mode full-model --cos_sim_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --epochs 6"
-    "python3 multitask_classifier.py --boosted_bert y --use_gpu --fine-tune-mode full-model --neg_rankings_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --epochs 6"
-    "python3 multitask_classifier.py --boosted_bert y --use_gpu --fine-tune-mode full-model --neg_rankings_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --cos_sim_loss y --epochs 6"
-    "python3 multitask_classifier.py --boosted_bert y --use_gpu --fine-tune-mode full-model --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --pearson_loss y --epochs 6"
-    "python3 multitask_classifier.py --boosted_bert y --use_gpu --fine-tune-mode full-model --neg_rankings_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --cos_sim_loss y --pearson_loss y --epochs 6"
+    "python3 multitask_classifier.py --ensembling y --use_gpu --fine-tune-mode full-model --cos_sim_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --epochs 6"
+    "python3 multitask_classifier.py --ensembling y --use_gpu --fine-tune-mode full-model --neg_rankings_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --epochs 6"
+    "python3 multitask_classifier.py --ensembling y --use_gpu --fine-tune-mode full-model --neg_rankings_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --cos_sim_loss y --epochs 6"
+    "python3 multitask_classifier.py --ensembling y --use_gpu --fine-tune-mode full-model --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --pearson_loss y --epochs 6"
+    "python3 multitask_classifier.py --ensembling y --use_gpu --fine-tune-mode full-model --neg_rankings_loss y --balance_sampling 6 --sst_layers 2 --para_layers 2 --sts_layers 0 --cos_sim_loss y --pearson_loss y --epochs 6"
 )
 
 # Define an array of corresponding output file names
