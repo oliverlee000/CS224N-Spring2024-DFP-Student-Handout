@@ -238,7 +238,6 @@ def train_multitask(args):
 
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01)
     best_dev_acc = 0
 
     # Set loss function for sts
