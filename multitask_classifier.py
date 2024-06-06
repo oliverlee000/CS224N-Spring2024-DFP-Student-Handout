@@ -238,6 +238,7 @@ def train_multitask(args):
 
     lr = args.lr
     optimizer = AdamW(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01)
     best_dev_acc = 0
 
     # Set loss function for sts
@@ -255,7 +256,7 @@ def train_multitask(args):
             # Train cos sim loss
             # Add dynamic lr
             scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(cos_sim_dataloader), epochs=args.epochs_ft) \
-                if args.var_lr == 'y' else None
+                if args.vary_lr == 'y' else None
             for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"PREpoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
                                                                             cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
@@ -272,13 +273,13 @@ def train_multitask(args):
                 cos_loss = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels) / args.batch_size
                 cos_loss.backward()
                 optimizer.step()
-                if args.var_lr == 'y': 
+                if args.vary_lr == 'y': 
                     scheduler.step()
 
         if args.fine_tune_mode == 'full-model' and args.neg_rankings_loss == 'y':
             # Train neg rankings loss
             scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(neg_rankings_dataloader), epochs=args.epochs_ft) \
-                if args.var_lr == 'y' else None
+                if args.vary_lr == 'y' else None
             for neg_rankings_batch in tqdm(neg_rankings_dataloader, desc=f"PREpoch {epoch+1}/{args.epochs_ft}, Task = negative rankings loss"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (neg_rankings_batch['token_ids_1'], neg_rankings_batch['attention_mask_1'],
                                                                             neg_rankings_batch['token_ids_2'], neg_rankings_batch['attention_mask_2'],
@@ -296,7 +297,7 @@ def train_multitask(args):
                 neg_rankings_loss.backward()
                 optimizer.step()
 
-                if args.var_lr == 'y': 
+                if args.vary_lr == 'y': 
                     scheduler.step()
 
     if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
@@ -311,7 +312,7 @@ def train_multitask(args):
         # Train sentiment
         if args.task == "all" or args.task == "sst":
             scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(sst_train_dataloader), epochs=args.epochs) \
-                if args.var_lr == 'y' else None
+                if args.vary_lr == 'y' else None
             for sst_batch in tqdm(sst_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = sentiment"):
                 sst_ids, sst_mask, sst_labels = (sst_batch['token_ids'],
                                         sst_batch['attention_mask'], sst_batch['labels'])
@@ -328,7 +329,7 @@ def train_multitask(args):
                 sst_loss.backward()
                 optimizer.step()
 
-                if args.var_lr == 'y': 
+                if args.vary_lr == 'y': 
                     scheduler.step()
 
                 train_loss += sst_loss.item()
@@ -337,7 +338,7 @@ def train_multitask(args):
         if args.task == "all" or args.task == "para":
             # Train paraphrase
             scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(para_train_dataloader), epochs=args.epochs) \
-                if args.var_lr == 'y' else None
+                if args.vary_lr == 'y' else None
             for para_batch in tqdm(para_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = paraphrase"):
                 para_ids_1, para_mask_1, para_ids_2, para_mask_2, para_labels = (para_batch['token_ids_1'], para_batch['attention_mask_1'],
                                                                                 para_batch['token_ids_2'], para_batch['attention_mask_2'],
@@ -356,7 +357,7 @@ def train_multitask(args):
                 para_loss.backward()
                 optimizer.step()
 
-                if args.var_lr == 'y': 
+                if args.vary_lr == 'y': 
                     scheduler.step()
 
                 train_loss += para_loss.item()
@@ -365,7 +366,7 @@ def train_multitask(args):
         if args.task == "all" or args.task == "sts":
             # Train similarity
             scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(sts_train_dataloader), epochs=args.epochs) \
-                if args.var_lr == 'y' else None
+                if args.vary_lr == 'y' else None
             for sts_batch in tqdm(sts_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = similarity"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (sts_batch['token_ids_1'], sts_batch['attention_mask_1'],
                                                                             sts_batch['token_ids_2'], sts_batch['attention_mask_2'],
@@ -385,7 +386,7 @@ def train_multitask(args):
                 sts_loss.backward()
                 optimizer.step()
 
-                if args.var_lr == 'y': 
+                if args.vary_lr == 'y': 
                     scheduler.step()
 
                 train_loss += sts_loss.item()
