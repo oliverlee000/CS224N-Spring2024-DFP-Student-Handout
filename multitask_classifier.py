@@ -78,6 +78,7 @@ class LoRADoRA(nn.Module):
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
 
+
 '''
 Returns pearson coefficient loss
 
@@ -383,13 +384,23 @@ def train_multitask(args):
                 sts_loss = sts_loss_fn(sts_logits, sts_labels)
 
                 sts_loss.backward()
-                optimizer.step()
-
-                if args.vary_lr == 'y': 
-                    scheduler.step()
-
                 train_loss += sts_loss.item()
                 num_batches += 1
+
+                if args.contrastive_learning == 'y':
+                    emb_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
+                    emb_2 = model.bert(sts_ids_2, sts_mask_2)['pooler_output']
+                    ntxent_loss = model.compute_ntxent_loss(emb_1, emb_2)
+
+                    ntxent_loss.backward()
+                    optimizer.step()
+
+                    train_loss += ntxent_loss.item()
+                    num_batches += 1
+                
+                optimizer.step()
+                if args.vary_lr == 'y': 
+                    scheduler.step()
         
         train_loss = train_loss / (num_batches)
         overall_dev_acc = 0
@@ -647,6 +658,15 @@ def get_args():
                          type = str,
                          choices=('y','n'),
                          default='n')
+    
+    # 12. contrastive_learning
+    parser.add_argument("--contrastive_learning",
+                         type = str,
+                         choices=('y','n'),
+                         default='y')
+    parser.add_argument("--contrastive_weight",
+                         type = float,
+                         default=0.5)
 
     parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
     parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
