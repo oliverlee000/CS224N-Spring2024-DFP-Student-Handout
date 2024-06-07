@@ -78,33 +78,6 @@ class LoRADoRA(nn.Module):
         columnNorm = torch.sqrt(torch.sum(loraMatrix ** 2, dim=0))
         return F.linear(x, loraMatrix / columnNorm * self.mVector, self.bias)
 
-class NTXentLoss(nn.Module):
-    def __init__(self, temperature=0.5):
-        super(NTXentLoss, self).__init__()
-        self.temperature = temperature
-        self.cosine_similarity = nn.CosineSimilarity(dim=-1)
-
-    def forward(self, zis, zjs):
-        representations = torch.cat([zis, zjs], dim=0)
-        similarity_matrix = self.cosine_similarity(representations.unsqueeze(1), representations.unsqueeze(0))
-        
-        # Create the positive and negative masks
-        batch_size = zis.size(0)
-        mask = torch.eye(batch_size, device=zis.device, dtype=torch.bool)
-        pos_mask = torch.cat([mask, mask], dim=0)
-        neg_mask = ~pos_mask
-
-        # Select the positive and negative pairs
-        pos_sim = similarity_matrix[pos_mask].view(2 * batch_size, -1)
-        neg_sim = similarity_matrix[neg_mask].view(2 * batch_size, -1)
-
-        logits = torch.cat([pos_sim, neg_sim], dim=1)
-        logits /= self.temperature
-
-        labels = torch.zeros(2 * batch_size, device=zis.device, dtype=torch.long)
-        loss = F.cross_entropy(logits, labels)
-
-        return loss
 
 '''
 Returns pearson coefficient loss
