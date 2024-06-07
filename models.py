@@ -152,6 +152,8 @@ class MultitaskBERT(nn.Module):
         # If concat = h, then concate not just both embeddings together, but also with element-wise difference of embeddings as well
         self.para_concat, self.sts_concat = config.para_concat, config.sts_concat
 
+        self.ntxent_loss_func = NTXentLoss(temperature=0.5)
+
         if self.para_concat == 'y':
             self.para_layers = NN(config.num_para_layers, 2*BERT_HIDDEN_SIZE, para_hidden_size, 1)
         elif self.para_concat == 'h':
@@ -260,3 +262,34 @@ class MultitaskBERT(nn.Module):
             output_2 = self.sts_layers(emb_2)
             output = F.cosine_similarity(output_1, output_2, dim=-1).view(-1, 1)
             return output
+        
+    def compute_ntxent_loss(self, emb_1, emb_2):
+        return self.ntxent_loss_func(emb_1, emb_2)
+    
+#modified from githib repo
+class NTXentLoss(nn.Module):
+    def __init__(self, temperature=0.5):
+        super(NTXentLoss, self).__init__()
+        self.temperature = temperature
+
+    def forward(self, zis, zjs):
+        representations = torch.cat([zis, zjs], dim=0)
+        similarity_matrix = F.cosine_similarity(representations.unsqueeze(1), representations.unsqueeze(0), dim=-1)
+
+        # Create the positive and negative masks
+        batch_size = zis.size(0)
+        labels = torch.cat([torch.arange(batch_size), torch.arange(batch_size)], dim=0).to(representations.device)
+        mask = torch.eye(2 * batch_size, device=zis.device, dtype=torch.bool)
+        neg_mask = ~mask
+
+        # Select the positive and negative pairs
+        pos_sim = similarity_matrix[mask].view(2 * batch_size, 1)
+        neg_sim = similarity_matrix[neg_mask].view(2 * batch_size, -1)
+
+        logits = torch.cat([pos_sim, neg_sim], dim=1)
+        logits /= self.temperature
+
+        labels = torch.zeros(2 * batch_size, device=zis.device, dtype=torch.long)
+        loss = F.cross_entropy(logits, labels)
+
+        return loss
