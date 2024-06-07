@@ -116,6 +116,16 @@ def save_model(model, optimizer, args, config, filepath):
     torch.save(save_info, filepath)
     print(f"save the model to {filepath}")
 
+def save_scores(epoch, train_loss, overall_dev_acc, scores_file):
+    scores = {
+        'epoch': epoch,
+        'train_loss': train_loss,
+        'overall_dev_acc': overall_dev_acc
+    }
+    with open(scores_file, 'w') as f:
+        json.dump(scores, f)
+    print(f"Saved scores to {scores_file}")
+
 '''
 Prints presets specified by args
 '''
