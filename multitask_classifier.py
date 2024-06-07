@@ -251,6 +251,7 @@ def train_multitask(args):
     if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
         print("Pretraining on additional loss functions.")
     for epoch in range(args.epochs_ft):
+        print("test")
         model.train()
         if args.fine_tune_mode == 'full-model' and args.cos_sim_loss == 'y':
             # Train cos sim loss
