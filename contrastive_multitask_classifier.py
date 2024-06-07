@@ -394,7 +394,7 @@ def train_multitask(args):
                 if args.contrastive_learning:
                     emb_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
                     emb_2 = model.bert(sts_ids_2, sts_mask_2)['pooler_output']
-                    ntxent_loss = args.contrastive_weight * model.ntxent_loss(emb_1, emb_2)
+                    ntxent_loss = args.contrastive_weight * model.compute_ntxent_loss(emb_1, emb_2)
                     train_loss += ntxent_loss.item()
 
                 num_batches += 1
