@@ -252,6 +252,7 @@ class MultitaskBERT(nn.Module):
     def compute_ntxent_loss(self, emb_1, emb_2):
         return self.ntxent_loss_func(emb_1, emb_2)
     
+#modified from githib repo
 class NTXentLoss(nn.Module):
     def __init__(self, temperature=0.5):
         super(NTXentLoss, self).__init__()
