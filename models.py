@@ -246,3 +246,6 @@ class MultitaskBERT(nn.Module):
             output_2 = self.sts_layers(emb_2)
             output = F.cosine_similarity(output_1, output_2, dim=-1).view(-1, 1)
             return output
+        
+    def compute_ntxent_loss(self, emb_1, emb_2):
+        return self.ntxent_loss(emb_1, emb_2)
