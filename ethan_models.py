@@ -264,7 +264,7 @@ class MultitaskBERT(nn.Module):
     def forward(self, input_ids, attention_mask):
         output = self.bert(input_ids, attention_mask)['hidden_state']
         return output['last_hidden_state']
-    
+        
     def smart_forward(self, input_ids, attention_mask):
         return self.bert(input_ids, attention_mask)['pooler_output']
 
