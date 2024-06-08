@@ -1,4 +1,4 @@
-Settings:
+tSettings:
 Task: sst
 Fine tune mode: full-model
 Num of epochs: 5
