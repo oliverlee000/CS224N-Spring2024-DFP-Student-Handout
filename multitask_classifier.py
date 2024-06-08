@@ -663,7 +663,7 @@ def get_args():
     parser.add_argument("--contrastive_learning",
                          type = str,
                          choices=('y','n'),
-                         default='y')
+                         default='n')
     parser.add_argument("--contrastive_weight",
                          type = float,
                          default=0.5)
