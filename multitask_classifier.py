@@ -87,8 +87,6 @@ Pearon coefficient is defined as E[(X-E[X])(Y-E[Y])]/sqrt(Var(X)Var(Y))
 def pearson_coefficient_loss(output, target):
     vx = output - torch.mean(output)
     vy = target - torch.mean(target)
-    print(vx.size())
-    print(vy.size())
     return -1 * torch.dot(vx, vy) * torch.rsqrt(torch.sum(vx ** 2)) * torch.rsqrt(torch.sum(vy ** 2))
 
 TQDM_DISABLE=False
