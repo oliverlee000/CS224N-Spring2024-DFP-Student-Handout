@@ -632,7 +632,7 @@ def get_args():
     parser.add_argument("--para_concat",
                         type=str,
                         help='Concatenate bert embeddings for para',
-                        choices=('y','n'),
+                        choices=('y','n', 'h'),
                         default='y')
     parser.add_argument("--sts_concat",
                         type=str,
