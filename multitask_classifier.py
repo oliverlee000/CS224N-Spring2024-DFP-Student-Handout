@@ -87,6 +87,8 @@ Pearon coefficient is defined as E[(X-E[X])(Y-E[Y])]/sqrt(Var(X)Var(Y))
 def pearson_coefficient_loss(output, target):
     vx = output - torch.mean(output)
     vy = target - torch.mean(target)
+    print(vx.size())
+    print(vy.size())
     return -1 * torch.dot(vx, vy) * torch.rsqrt(torch.sum(vx ** 2)) * torch.rsqrt(torch.sum(vy ** 2))
 
 TQDM_DISABLE=False
@@ -255,8 +257,6 @@ def train_multitask(args):
         if args.fine_tune_mode == 'full-model' and args.cos_sim_loss == 'y':
             # Train cos sim loss
             # Add dynamic lr
-            scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(cos_sim_dataloader), epochs=args.epochs_ft) \
-                if args.vary_lr == 'y' else None
             for cos_sim_batch in tqdm(cos_sim_dataloader, desc=f"PREpoch {epoch+1}/{args.epochs_ft}, Task = cosine similarity loss"):
                 sts_ids_1, sts_mask_1, sts_ids_2, sts_mask_2, sts_labels = (cos_sim_batch['token_ids_1'], cos_sim_batch['attention_mask_1'],
                                                                             cos_sim_batch['token_ids_2'], cos_sim_batch['attention_mask_2'],
@@ -273,8 +273,6 @@ def train_multitask(args):
                 cos_loss = model.cos_sim_loss(sts_ids_1, sts_ids_2, sts_mask_1, sts_mask_2, sts_labels) / args.batch_size
                 cos_loss.backward()
                 optimizer.step()
-                if args.vary_lr == 'y': 
-                    scheduler.step()
 
         if args.fine_tune_mode == 'full-model' and args.neg_rankings_loss == 'y':
             # Train neg rankings loss
@@ -297,9 +295,6 @@ def train_multitask(args):
                 neg_rankings_loss.backward()
                 optimizer.step()
 
-                if args.vary_lr == 'y': 
-                    scheduler.step()
-
     if args.cos_sim_loss == 'y' or args.neg_rankings_loss == 'y':
         print("Pretraining over.")
 
@@ -311,8 +306,6 @@ def train_multitask(args):
 
         # Train sentiment
         if args.task == "all" or args.task == "sst":
-            scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(sst_train_dataloader), epochs=args.epochs) \
-                if args.vary_lr == 'y' else None
             for sst_batch in tqdm(sst_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = sentiment"):
                 sst_ids, sst_mask, sst_labels = (sst_batch['token_ids'],
                                         sst_batch['attention_mask'], sst_batch['labels'])
@@ -329,16 +322,11 @@ def train_multitask(args):
                 sst_loss.backward()
                 optimizer.step()
 
-                if args.vary_lr == 'y': 
-                    scheduler.step()
-
                 train_loss += sst_loss.item()
                 num_batches += 1
 
         if args.task == "all" or args.task == "para":
             # Train paraphrase
-            scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, steps_per_epoch=len(para_train_dataloader), epochs=args.epochs) \
-                if args.vary_lr == 'y' else None
             for para_batch in tqdm(para_train_dataloader, desc=f"Epoch {epoch+1}/{args.epochs}, Task = paraphrase"):
                 para_ids_1, para_mask_1, para_ids_2, para_mask_2, para_labels = (para_batch['token_ids_1'], para_batch['attention_mask_1'],
                                                                                 para_batch['token_ids_2'], para_batch['attention_mask_2'],
@@ -356,9 +344,6 @@ def train_multitask(args):
                 
                 para_loss.backward()
                 optimizer.step()
-
-                if args.vary_lr == 'y': 
-                    scheduler.step()
 
                 train_loss += para_loss.item()
                 num_batches += 1
@@ -632,12 +617,12 @@ def get_args():
     parser.add_argument("--para_concat",
                         type=str,
                         help='Concatenate bert embeddings for para',
-                        choices=('y','n', 'h'),
+                        choices=('y','n','h'),
                         default='y')
     parser.add_argument("--sts_concat",
                         type=str,
                         help='Concatenate bert embeddings for sts',
-                        choices=('y','n'),
+                        choices=('y','n','h'),
                         default='n')
     
     # 10. Pearson loss for sts

@@ -152,8 +152,6 @@ class MultitaskBERT(nn.Module):
         # If concat = h, then concate not just both embeddings together, but also with element-wise difference of embeddings as well
         self.para_concat, self.sts_concat = config.para_concat, config.sts_concat
 
-        self.ntxent_loss_func = NTXentLoss(temperature=0.5)
-
         if self.para_concat == 'y':
             self.para_layers = NN(config.num_para_layers, 2*BERT_HIDDEN_SIZE, para_hidden_size, 1)
         elif self.para_concat == 'h':
@@ -173,8 +171,8 @@ class MultitaskBERT(nn.Module):
         return output
 
     def predict_paraphrase(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
-        embed_1 = self(input_ids_1, attention_mask_1)
-        embed_2 = self(input_ids_2, attention_mask_2)
+        embed_1 = self.forward(input_ids_1, attention_mask_1)
+        embed_2 = self.forward(input_ids_2, attention_mask_2)
         if self.para_concat == 'y':
             # Concanate embeddings together, then return NN output of concatenation
             embeds = torch.cat((embed_1, embed_2), 1)
@@ -199,7 +197,7 @@ class MultitaskBERT(nn.Module):
             embeds = torch.cat((embed_1, embed_2), 1)
             output = self.sts_layers(embeds)
             return output
-        elif self.para_concat == 'h':
+        elif self.sts_concat == 'h':
             # Concanate embeddings together, then return NN output of concatenation
             embeds = torch.cat((embed_1, embed_2, embed_2 - embed_1), 1)
             output = self.sts_layers(embeds)
@@ -208,17 +206,6 @@ class MultitaskBERT(nn.Module):
             output_1 = self.sts_layers(embed_1)
             output_2 = self.sts_layers(embed_2)
             output = F.cosine_similarity(output_1, output_2).view(-1, 1)
-            return output
-        
-    def predict_paraphrase_with_emb(self, emb_1, emb_2):
-        if self.para_concat == 'y':
-            embeds = torch.cat((emb_1, emb_2), 1)
-            output = self.para_layers(embeds)
-            return output
-        else:
-            output_1 = self.para_layers(emb_1)
-            output_2 = self.para_layers(emb_2)
-            output = F.cosine_similarity(output_1, output_2, dim=-1).view(-1, 1)
             return output
 
 
@@ -251,45 +238,3 @@ class MultitaskBERT(nn.Module):
         cos_sim_emb_2 = self.bert(sts_ids_2, sts_mask_2)['last_hidden_state'][:,0,:]
         cos_loss = F.cosine_embedding_loss(cos_sim_emb_1, cos_sim_emb_2, sts_labels, reduction='mean')
         return cos_loss
-
-    def predict_similarity_with_emb(self, emb_1, emb_2):
-        if self.sts_concat == 'y':
-            embeds = torch.cat((emb_1, emb_2), 1)
-            output = self.sts_layers(embeds)
-            return output
-        else:
-            output_1 = self.sts_layers(emb_1)
-            output_2 = self.sts_layers(emb_2)
-            output = F.cosine_similarity(output_1, output_2, dim=-1).view(-1, 1)
-            return output
-        
-    def compute_ntxent_loss(self, emb_1, emb_2):
-        return self.ntxent_loss_func(emb_1, emb_2)
-    
-#modified from githib repo
-class NTXentLoss(nn.Module):
-    def __init__(self, temperature=0.5):
-        super(NTXentLoss, self).__init__()
-        self.temperature = temperature
-
-    def forward(self, zis, zjs):
-        representations = torch.cat([zis, zjs], dim=0)
-        similarity_matrix = F.cosine_similarity(representations.unsqueeze(1), representations.unsqueeze(0), dim=-1)
-
-        # Create the positive and negative masks
-        batch_size = zis.size(0)
-        labels = torch.cat([torch.arange(batch_size), torch.arange(batch_size)], dim=0).to(representations.device)
-        mask = torch.eye(2 * batch_size, device=zis.device, dtype=torch.bool)
-        neg_mask = ~mask
-
-        # Select the positive and negative pairs
-        pos_sim = similarity_matrix[mask].view(2 * batch_size, 1)
-        neg_sim = similarity_matrix[neg_mask].view(2 * batch_size, -1)
-
-        logits = torch.cat([pos_sim, neg_sim], dim=1)
-        logits /= self.temperature
-
-        labels = torch.zeros(2 * batch_size, device=zis.device, dtype=torch.long)
-        loss = F.cross_entropy(logits, labels)
-
-        return loss
