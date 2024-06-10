@@ -4,6 +4,19 @@ import math
 import torch
 from torch.optim import Optimizer
 
+# NOTE: DOES NOT WORK: DO NOT INCLUDE IN ACTUAL CODE
+def gradient_surgery(self, grads):
+        """
+        Apply gradient surgery to minimize gradient interference between tasks.
+        This implementation ensures that we handle each parameter's gradient separately.
+        """
+        for i in range(len(grads)):
+            for j in range(i + 1, len(grads)):
+                g_i, g_j = grads[i], grads[j]
+                if g_i is not None and g_j is not None and g_i.shape == g_j.shape:
+                    g_dot = torch.dot(g_i.flatten(), g_j.flatten())
+                    if g_dot > 0:
+                        g_i -= g_dot / g_j.norm().item() ** 2 * g_j
 
 class AdamW(Optimizer):
     def __init__(

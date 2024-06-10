@@ -369,17 +369,6 @@ def train_multitask(args):
                 sts_loss.backward()
                 train_loss += sts_loss.item()
                 num_batches += 1
-
-                if args.contrastive_learning == 'y':
-                    emb_1 = model.bert(sts_ids_1, sts_mask_1)['pooler_output']
-                    emb_2 = model.bert(sts_ids_2, sts_mask_2)['pooler_output']
-                    ntxent_loss = model.compute_ntxent_loss(emb_1, emb_2)
-
-                    ntxent_loss.backward()
-                    optimizer.step()
-
-                    train_loss += ntxent_loss.item()
-                    num_batches += 1
                 
                 optimizer.step()
                 if args.vary_lr == 'y': 
@@ -647,7 +636,7 @@ def get_args():
     parser.add_argument("--contrastive_learning",
                          type = str,
                          choices=('y','n'),
-                         default='y')
+                         default='n')
     parser.add_argument("--contrastive_weight",
                          type = float,
                          default=0.5)
